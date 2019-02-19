@@ -21,8 +21,9 @@ def load_data(filename):
 
 async def run():
     """
-    Where the bot gets started. If you wanted to create an database connection pool or other session for the bot to use,
-    it's recommended that you create it here and pass it to the bot as a kwarg.
+    Where the bot gets started. If you wanted to create an database connection
+    pool or other session for the bot to use, it's recommended that you create
+    it here and pass it to the bot as a kwarg.
     """
 
     config = load_data('config.json')
