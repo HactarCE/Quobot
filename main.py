@@ -25,14 +25,17 @@ async def run():
     it's recommended that you create it here and pass it to the bot as a kwarg.
     """
 
-    secret_data = load_data('secret.json')
     config = load_data('config.json')
-    if secret_data['token'] == 'TOKEN_GOES_HERE':
-        raise Exception("Please specify a bot token in data/client.json")
+    try:
+        with open(path.join(DATA_DIR, 'token.txt'), 'r') as f:
+            token = f.read().strip()
+    except:
+        print("Please specify a bot token in data/token.txt")
+        raise
     bot = Bot(config=config,
               description=config['description'])
     try:
-        await bot.start(secret_data['token'])
+        await bot.start(token)
     except KeyboardInterrupt:
         await bot.logout()
 

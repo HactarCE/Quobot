@@ -14,5 +14,5 @@ git checkout rewrite
 pip install --user .
 ```
 
-3. Put the bot token in `data/secret.json`.
+3. Create a file `data/token.txt` containing the bot token ("client secret").
 4. Run `python3 main.py` to start the bot.
