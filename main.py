@@ -2,16 +2,19 @@ import asyncio
 import datetime
 import json
 import logging
+from os import path
 from pathlib import Path
 
 import discord
 from discord.ext import commands
 
 
-def config_load():
-    with open('data/config.json', 'r', encoding='utf-8') as doc:
-        #  Please make sure encoding is correct, especially after editing the config file
-        return json.load(doc)
+DATA_DIR = path.join(path.dirname(path.realpath(__file__)), 'data')
+
+
+def load_data(filename):
+    with open(path.join(DATA_DIR, filename), 'r', encoding='utf-8') as f:
+        return json.load(f)
 
 
 async def run():
@@ -20,11 +23,14 @@ async def run():
     it's recommended that you create it here and pass it to the bot as a kwarg.
     """
 
-    config = config_load()
+    client_data = load_data('client.json')
+    config = load_data('config.json')
+    if client_data['token'] == 'TOKEN_GOES_HERE':
+        raise Exception("Please specify a bot token in data/client.json")
     bot = Bot(config=config,
-              description=config['description'])
+              description=client_data['description'])
     try:
-        await bot.start(config['token'])
+        await bot.start(client_data['token'])
     except KeyboardInterrupt:
         await bot.logout()
 
