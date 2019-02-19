@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import asyncio
 import datetime
 import json
@@ -23,14 +25,14 @@ async def run():
     it's recommended that you create it here and pass it to the bot as a kwarg.
     """
 
-    client_data = load_data('client.json')
+    secret_data = load_data('secret.json')
     config = load_data('config.json')
-    if client_data['token'] == 'TOKEN_GOES_HERE':
+    if secret_data['token'] == 'TOKEN_GOES_HERE':
         raise Exception("Please specify a bot token in data/client.json")
     bot = Bot(config=config,
-              description=client_data['description'])
+              description=config['description'])
     try:
-        await bot.start(client_data['token'])
+        await bot.start(secret_data['token'])
     except KeyboardInterrupt:
         await bot.logout()
 
