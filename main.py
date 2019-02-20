@@ -2,7 +2,6 @@
 
 import asyncio
 import datetime
-import json
 import logging
 from os import path
 from pathlib import Path
@@ -10,13 +9,7 @@ from pathlib import Path
 import discord
 from discord.ext import commands
 
-
-DATA_DIR = path.join(path.dirname(path.realpath(__file__)), 'data')
-
-
-def load_data(filename):
-    with open(path.join(DATA_DIR, filename), 'r', encoding='utf-8') as f:
-        return json.load(f)
+from database import DATA_DIR, DB
 
 
 async def run():
@@ -26,7 +19,7 @@ async def run():
     it here and pass it to the bot as a kwarg.
     """
 
-    config = load_data('config.json')
+    config = DB('config')
     try:
         with open(path.join(DATA_DIR, 'token.txt'), 'r') as f:
             token = f.read().strip()
@@ -52,6 +45,8 @@ class Bot(commands.Bot):
 
         self.loop.create_task(self.track_start())
         self.loop.create_task(self.load_all_extensions())
+
+        self.config = kwargs.pop('config')
 
     async def track_start(self):
         """
