@@ -7,7 +7,7 @@ class Sample:
         self.bot = bot
 
 
-    def on_guild_join(self, guild):
+    async def on_guild_join(self, guild):
         """
         Events in cogs don't need the decorator
 
