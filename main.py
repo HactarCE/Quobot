@@ -9,7 +9,7 @@ from pathlib import Path
 import discord
 from discord.ext import commands
 
-from database import DATA_DIR, DB
+from database import DATA_DIR, get_db
 
 
 async def run():
@@ -19,7 +19,7 @@ async def run():
     it here and pass it to the bot as a kwarg.
     """
 
-    config = DB('config')
+    config = get_db('config')
     try:
         with open(path.join(DATA_DIR, 'token.txt'), 'r') as f:
             token = f.read().strip()
@@ -68,7 +68,7 @@ class Bot(commands.Bot):
 
     async def load_all_extensions(self):
         """
-        Attempts to load all .py files in /cogs/ as cog extensions
+        Attempts to load all .py files in cogs/ as cog extensions
         """
         await self.wait_until_ready()
         await asyncio.sleep(1)  # ensure that on_ready has completed and finished printing
@@ -76,10 +76,10 @@ class Bot(commands.Bot):
         for extension in cogs:
             try:
                 self.load_extension(f'cogs.{extension}')
-                print(f'loaded {extension}')
+                print(f"loaded {extension}")
             except Exception as e:
                 error = f'{extension}\n {type(e).__name__} : {e}'
-                print(f'failed to load extension {error}')
+                print(f"failed to load extension {error}")
             print('-' * 10)
 
     async def on_ready(self):
@@ -88,15 +88,15 @@ class Bot(commands.Bot):
         """
         print('-' * 10)
         self.app_info = await self.application_info()
-        print(f'Logged in as: {self.user.name}\n'
-              f'Using discord.py version: {discord.__version__}\n'
-              f'Owner: {self.app_info.owner}\n'
-              f'Template Maker: SourSpoon / Spoon#7805')
+        print(f"Logged in as: {self.user.name}\n"
+              f"Using discord.py version: {discord.__version__}\n"
+              f"Owner: {self.app_info.owner}\n"
+              f"Template Maker: SourSpoon / Spoon#7805")
         print('-' * 10)
 
     async def on_message(self, message):
         """
-        This event triggers on every message received by the bot. Including one's that it sent itself.
+        This event triggers on every message received by the bot. Including ones that it sent itself.
 
         If you wish to have multiple event listeners they can be added in other cogs. All on_message listeners should
         always ignore bots.

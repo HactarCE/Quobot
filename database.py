@@ -5,13 +5,29 @@ DATA_DIR = path.join(path.dirname(path.realpath(__file__)), 'data')
 
 
 def load_data(filename):
-    with open(path.join(DATA_DIR, filename), 'r', encoding='utf-8') as f:
-        return json.load(f)
+    try:
+        with open(path.join(DATA_DIR, filename), 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        print(f"Successfully loaded {filename}.")
+        print('-' * 10)
+        return data
+    except:
+        print(f"There was an error loading {filename}.")
+        print('-' * 10)
+        return {}
 
 
 def save_data(filename, data):
     with open(path.join(DATA_DIR, filename), 'w', encoding='utf-8') as f:
-        json.dump(f)
+        json.dump(data, f)
+
+
+databases = {}
+
+def get_db(db_name):
+    if db_name not in databases:
+        databases[db_name] = DB(db_name)
+    return databases[db_name]
 
 
 class DB(dict):
@@ -25,4 +41,4 @@ class DB(dict):
         self.update(load_data(self.filename))
 
     def save(self):
-        save_data(filename, self)
+        save_data(self.filename, self)
