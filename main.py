@@ -105,6 +105,10 @@ class Bot(commands.Bot):
             l.info(LOG_SEP)
         return succeeded
 
+    # async def get_owner(self):
+        # return self.owner_id
+        # return self.application_info().owner
+
     async def on_message(self, message):
         """This event triggers on every message received by the bot. Including ones that it sent itself."""
         if message.author.bot:
@@ -112,9 +116,6 @@ class Bot(commands.Bot):
         await self.process_commands(message)
 
     async def on_command_error(self, ctx, exc, *args, **kwargs):
-        if isinstance(exc, commands.CommandInvokeError) and isinstance(exc.original, ShowErrorException):
-            return
-
         command_name = ctx.command.name if ctx.command else "unknown command"
         l.error(f"'{str(exc)}' encountered while executing '{command_name}' (args: {args}; kwargs: {kwargs})")
         if isinstance(exc, commands.UserInputError):
@@ -172,21 +173,18 @@ class Bot(commands.Bot):
             fields = [
                 ("Guild", guild_name, True),
                 ("Channel", channel_name, True),
-                ("User", f"{user.name}#{user.discriminator} (A.K.A. {user.display_name})"),
+                ("User", f"{user} (A.K.A. {user.display_name})"),
                 ("Message Content", f"{ctx.message.content}"),
             ]
         else:
             fields = []
-        tb = clean("".join(traceback.format_tb(exc.__traceback__)))
+        tb = ''.join(traceback.format_tb(exc.__traceback__))
         fields += [
             ("Args", f"```\n{repr(args)}\n```" if args else "None", True),
             ("Keyword Args", f"```\n{repr(kwargs)}\n```" if kwargs else "None", True),
-            ("Traceback", f"```\n{tb}\n```"),
+            ("Traceback", f"```\n{tb.replace('```', '` ` `')}\n```"),
         ]
-        if not self.get_user(self.owner_id):
-            return
-
-        await self.get_user(self.owner_id).send(
+        await self.app_info.owner.send(
             embed=make_embed(
                 color=colors.EMBED_ERROR,
                 title="Error",

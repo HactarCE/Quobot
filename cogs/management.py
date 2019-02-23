@@ -8,6 +8,10 @@ class Management:
     def __init__(self, bot):
         self.bot = bot
 
+    @commands.command()
+    async def doerror(self, ctx):
+        raise Exception("this is an error! yikes!")
+
     async def on_guild_join(self, guild):
         """This event fires when the bot joins a guild."""
         print(f"Joined {guild.name} with {guild.member_count} users!")

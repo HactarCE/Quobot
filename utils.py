@@ -20,9 +20,12 @@ def make_embed(fields=[], *, footer_text=None, **kwargs):
     """
     embed = discord.Embed(**kwargs)
     for field in fields:
-        name, value, inline = None, field[0], False
-        if len(field) > 1:
-            name, value, inline = field + [None]
+        field = list(field)
+        if len(field) < 2:
+            field.insert(0, None)
+        if len(field) < 3:
+            field.append(False)
+        name, value, inline = field
         embed.add_field(name=name, value=value, inline=inline)
     if footer_text:
         embed.set_footer(text=footer_text)
