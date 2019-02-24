@@ -5,7 +5,7 @@ import time
 from discord.ext import commands
 from utils import l, make_embed
 from cogs.utils import is_meta
-from constants import colors, info, emoji
+from constants import colors, info
 
 
 def get_command_signature(command):
@@ -58,26 +58,28 @@ class General:
         if command_name:
             command = self.bot.get_command(command_name)
             if command is None:
-                await ctx.send(
-                    embed=make_embed(
-                        color=colors.EMBED_ERROR,
-                        title="Command help",
-                        description=f"Could not find command `{command_name}`.",
-                    )
-                )
+                await ctx.send(embed=make_embed(
+                    color=colors.EMBED_ERROR,
+                    title="Command help",
+                    description=f"Could not find command `{command_name}`.",
+                ))
             elif await command.can_run(ctx):
                 fields = []
                 if command.usage or command.clean_params:
-                    fields.append(
-                        ("Synopsis", f"`{get_command_signature(command)}`", True)
-                    )
+                    fields.append(("Synopsis", f"`{get_command_signature(command)}`", True))
                 if command.aliases:
                     aliases = ', '.join(f"`{alias}`" for alias in command.aliases)
                     fields.append(("Aliases", aliases, True))
                 if command.help:
                     fields.append(("Description", command.help))
                 if hasattr(command, 'commands'):
-                    subcommands = [f"`{get_command_signature(x)}`" + f" \N{EM DASH} {x.short_doc}" if x.short_doc else '' for x in command.commands]
+                    subcommands = []
+                    for subcommand in command.commands:
+                        s = f"`{get_command_signature(subcommand)}`"
+                        if subcommand.short_doc:
+                            s += f" \N{EM DASH} {subcommand.short_doc}"
+                        subcommands.append(s)
+                    subcommands.sort()
                     fields.append(("Subcommands", "\n".join(subcommands)))
                 misc = ''
                 if not command.enabled:
@@ -86,22 +88,20 @@ class General:
                     misc += "This command is usually hidden.\n"
                 if misc:
                     fields.append(("Miscellaneous", misc))
-                await ctx.send(
-                    embed=make_embed(
-                        color=colors.EMBED_HELP,
-                        title="Command help",
-                        description=f"`{command.name}`",
-                        fields=fields,
-                    )
-                )
+                print(fields)
+                await ctx.send(embed=make_embed(
+                    color=colors.EMBED_HELP,
+                    title="Command help",
+                    description=f"`{command.name}`",
+                    fields=fields,
+                ))
+                print('what do you know?')
             else:
-                await ctx.send(
-                    embed=make_embed(
-                        color=colors.EMBED_ERROR,
-                        title="Command help",
-                        description=f"You have insufficient permission to access `{command_name}`.",
-                    )
-                )
+                await ctx.send(embed=make_embed(
+                    color=colors.EMBED_ERROR,
+                    title="Command help",
+                    description=f"You have insufficient permission to access `{command_name}`.",
+                ))
         else:
             cog_names = []
             ungrouped_commands = []
@@ -111,9 +111,7 @@ class General:
             fields = []
             for cog_name in sorted(cog_names):
                 lines = []
-                for command in sorted(
-                    self.bot.get_cog_commands(cog_name), key=lambda cmd: cmd.name
-                ):
+                for command in sorted(self.bot.get_cog_commands(cog_name), key=lambda cmd: cmd.name):
                     if not command.hidden and (await command.can_run(ctx)):
                         line = f"\N{BULLET} **`{get_command_signature(command)}`**"
                         if command.short_doc:
@@ -122,19 +120,17 @@ class General:
                 if lines:
                     fields.append((cog_name, "\n".join(lines)))
             mention = ctx.me.mention
-            await ctx.send(
-                embed=make_embed(
-                    color=colors.EMBED_HELP,
-                    title="Command list",
-                    description=f"Invoke a command by prefixing it with `{prefix}` or {mention}. Use `{prefix}{ctx.command.name} [command]` to get help on a specific command.",
-                    fields=fields,
-                )
-            )
+            await ctx.send(embed=make_embed(
+                color=colors.EMBED_HELP,
+                title="Command list",
+                description=f"Invoke a command by prefixing it with `{prefix}` or {mention}. Use `{prefix}{ctx.command.name} [command]` to get help on a specific command.",
+                fields=fields,
+            ))
 
     @commands.command(aliases=['i', 'info'])
     @commands.check(is_meta)
     async def about(self, ctx):
-        """Information about the bot."""
+        """Display information about the bot."""
         await ctx.send(
             embed=make_embed(
                 title=f"About {info.NAME}",

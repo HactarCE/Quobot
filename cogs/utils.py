@@ -3,11 +3,11 @@ from database import get_db
 guilds_data = get_db('guilds')
 
 def get_guild_data(guild):
-    id = str(guild.id)
-    if id not in guilds_data:
-        guilds_data[id] = {}
+    guild_id = str(guild.id)
+    if guild_id not in guilds_data:
+        guilds_data[guild_id] = {}
         guilds_data.save()
-    return guilds_data[id]
+    return guilds_data[guild_id]
 
 async def is_meta(ctx):
     try:

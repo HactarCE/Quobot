@@ -121,7 +121,7 @@ class Bot(commands.Bot):
         await self.process_commands(message)
 
     async def on_command_error(self, ctx, exc, *args, **kwargs):
-        command_name = ctx.command.name if ctx.command else "unknown command"
+        command_name = ctx.command.qualified_name if ctx.command else "unknown command"
         l.error(f"'{str(exc)}' encountered while executing '{command_name}' (args: {args}; kwargs: {kwargs})")
         if isinstance(exc, commands.UserInputError):
             if isinstance(exc, commands.MissingRequiredArgument):
@@ -156,13 +156,11 @@ class Bot(commands.Bot):
         else:
             description = "Sorry, something went wrong.\n\nA team of highly trained monkeys has been dispatched to deal with the situation."
             await report_error(self, ctx, exc.original, *args, **kwargs)
-        await ctx.send(
-            embed=make_embed(
-                color=colors.EMBED_ERROR,
-                title="Error",
-                description=description
-            )
-        )
+        await ctx.send(embed=make_embed(
+            color=colors.EMBED_ERROR,
+            title="Error",
+            description=description
+        ))
 
 
 if __name__ == '__main__':
