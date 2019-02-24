@@ -110,6 +110,10 @@ class Bot(commands.Bot):
         # return self.owner_id
         # return self.application_info().owner
 
+    async def on_guild_join(self, guild):
+        """This event triggers when the bot joins a guild."""
+        l.info(f"Joined {guild.name} with {guild.member_count} users!")
+
     async def on_message(self, message):
         """This event triggers on every message received by the bot. Including ones that it sent itself."""
         if message.author.bot:
@@ -143,7 +147,8 @@ class Bot(commands.Bot):
                 missing_perms = "\n".join(exc.missing_perms)
                 description += f" Missing:\n```\n{missing_perms}\n```"
             else:
-                description = "Command check failed."
+                # description = "Command check failed."
+                return
         elif isinstance(exc, commands.DisabledCommand):
             description = "That command is disabled."
         elif isinstance(exc, commands.CommandOnCooldown):

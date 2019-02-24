@@ -21,7 +21,7 @@ def load_data(filename):
         # l.info(LOG_SEP)
         return data
     except:
-        l.warn(f"There was an error loading {filename}.")
+        l.warning(f"There was an error loading {filename}.")
         # l.info(LOG_SEP)
         return {}
 

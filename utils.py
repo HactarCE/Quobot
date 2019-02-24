@@ -62,6 +62,22 @@ async def react_yes_no(ctx, m, timeout=30):
     return result
 
 
+async def is_bot_admin(ctx):
+    if await ctx.bot.is_owner(ctx.author):
+        return True
+    try:
+        if ctx.message.author.guild_permissions.administrator:
+            return True
+    except:
+        pass
+    try:
+        if ctx.message.author.id in get_guild_data(ctx.guild)['admins']:
+            return True
+    except:
+        pass
+    return False
+
+
 async def report_error(bot, ctx, exc, *args, **kwargs):
     if ctx:
         if isinstance(ctx.channel, discord.DMChannel):

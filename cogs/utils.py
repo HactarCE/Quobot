@@ -9,15 +9,6 @@ def get_guild_data(guild):
         guilds_data.save()
     return guilds_data[id]
 
-async def is_bot_admin(ctx):
-    if ctx.message.author.guild_permissions.administrator:
-        return True
-    try:
-        return ctx.message.author.id in get_guild_data(ctx.guild)['admins']
-    except:
-        pass
-    return False
-
 async def is_meta(ctx):
     try:
         return ctx.message.channel.category_id in get_guild_data(ctx.guild)['categories']['meta']
