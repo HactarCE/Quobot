@@ -18,11 +18,11 @@ def load_data(filename):
         with open(path.join(DATA_DIR, filename), 'r', encoding='utf-8') as f:
             data = json.load(f)
         l.info(f"Successfully loaded {filename}.")
-        l.info(LOG_SEP)
+        # l.info(LOG_SEP)
         return data
     except:
-        l.info(f"There was an error loading {filename}.")
-        l.info(LOG_SEP)
+        l.warn(f"There was an error loading {filename}.")
+        # l.info(LOG_SEP)
         return {}
 
 

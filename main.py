@@ -2,16 +2,16 @@
 
 import asyncio
 import logging
-import traceback
 from os import path
 from pathlib import Path
 
 import discord
 from discord.ext import commands
 
+from cogs import get_extensions
 from constants import colors, info
 from database import DATA_DIR, get_db, TOKEN_FILE_PATH, get_token
-from utils import l, LOG_SEP, make_embed
+from utils import l, LOG_SEP, make_embed, report_error
 
 
 try:
@@ -31,7 +31,7 @@ async def run():
     bot = Bot(config=config,
               description=config.get('description'))
     try:
-        bot.loop.create_task(bot.load_all_extensions())
+        # bot.loop.create_task(bot.load_all_extensions())
         await bot.start(token)
     except KeyboardInterrupt:
         await bot.logout()
@@ -61,9 +61,8 @@ class Bot(commands.Bot):
             description=kwargs.pop('description'),
             status=discord.Status.dnd
         )
-        self.start_time = None
         self.app_info = None
-
+        self.cogs_loaded = set()
         self.config = kwargs.pop('config')
 
     async def on_connect(self):
@@ -78,30 +77,32 @@ class Bot(commands.Bot):
         l.info(f"Owner: {self.app_info.owner}")
         l.info(f"Template Maker: SourSpoon / Spoon#7805")
         l.info(LOG_SEP)
+        await self.load_all_extensions()
         await self.change_presence(status=discord.Status.online)
 
     async def on_resumed(self):
         l.info("Resumed session.")
         await self.change_presence(status=discord.status.online)
 
-    async def load_all_extensions(self):
+    async def load_all_extensions(self, reload=False):
         """
         Attempts to load all .py files in cogs/ as cog extensions. Returns a
         dictionary which maps cog names to a boolean value (True = successfully
         loaded; False = not successfully loaded).
         """
-        await asyncio.sleep(1)  # ensure that on_ready has completed and finished printing
-        cogs = sorted(p.stem for p in Path('cogs').glob('*.py'))
         succeeded = {}
-        for cog in cogs:
+        for extension in get_extensions():
             try:
-                self.load_extension(f'cogs.{cog}')
-                l.info(f"loaded {cog}")
-                succeeded[cog] = True
+                if reload or extension not in self.cogs_loaded:
+                    self.load_extension(f'cogs.{extension}')
+                    l.info(f"Loaded extension '{extension}'")
+                    self.cogs_loaded.add(extension)
+                    succeeded[extension] = True
             except Exception as e:
-                error = f'{cog}\n {type(e).__name__} : {e}'
-                l.error(f"failed to load cog {error}")
-                succeeded[cog] = False
+                error = f"{extension}\n {type(e).__name__} : {e}"
+                l.error(f"Failed to load extension '{error}'")
+                succeeded[extension] = False
+        if succeeded:
             l.info(LOG_SEP)
         return succeeded
 
@@ -149,7 +150,7 @@ class Bot(commands.Bot):
             description = "That command is on cooldown."
         else:
             description = "Sorry, something went wrong.\n\nA team of highly trained monkeys has been dispatched to deal with the situation."
-            await self.report_error(ctx, exc.original, *args, **kwargs)
+            await report_error(self, ctx, exc.original, *args, **kwargs)
         await ctx.send(
             embed=make_embed(
                 color=colors.EMBED_ERROR,
@@ -158,40 +159,6 @@ class Bot(commands.Bot):
             )
         )
 
-    async def report_error(self, ctx, exc, *args, **kwargs):
-        if ctx:
-            if isinstance(ctx.channel, discord.DMChannel):
-                guild_name = "N/A"
-                channel_name = f"DM"
-            elif isinstance(ctx.channel, discord.GroupChannel):
-                guild_name = "N/A"
-                channel_name = f"Group with {len(ctx.channel.recipients)} members (id={ctx.channel.id})"
-            else:
-                guild_name = ctx.guild.name
-                channel_name = f"#{ctx.channel.name}"
-            user = ctx.author
-            fields = [
-                ("Guild", guild_name, True),
-                ("Channel", channel_name, True),
-                ("User", f"{user} (A.K.A. {user.display_name})"),
-                ("Message Content", f"{ctx.message.content}"),
-            ]
-        else:
-            fields = []
-        tb = ''.join(traceback.format_tb(exc.__traceback__))
-        fields += [
-            ("Args", f"```\n{repr(args)}\n```" if args else "None", True),
-            ("Keyword Args", f"```\n{repr(kwargs)}\n```" if kwargs else "None", True),
-            ("Traceback", f"```\n{tb.replace('```', '` ` `')}\n```"),
-        ]
-        await self.app_info.owner.send(
-            embed=make_embed(
-                color=colors.EMBED_ERROR,
-                title="Error",
-                description=f"`{str(exc)}`",
-                fields=fields,
-            )
-        )
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()

@@ -27,6 +27,7 @@ async def is_meta(ctx):
     return True
 
 def formal_print_user(user):
+    # TODO replace with user.mention, and use in embed so it doesn't ping
     return f'{user.name}#{user.discriminator} ({user.id})'
 
 def setup(bot):
