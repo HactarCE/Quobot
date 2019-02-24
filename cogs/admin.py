@@ -133,6 +133,7 @@ class Admin:
     @commands.group()
     async def admins(self, ctx):
         if ctx.invoked_subcommand is None:
+            # TODO display command help
             await ctx.send("Subcommands: `add <user>`, `remove <user>`, `list`")
 
     @admins.command('add')

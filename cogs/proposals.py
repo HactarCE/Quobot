@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 
 
-class Quonauts:
+class Proposals:
     def __init__(self, bot):
         self.bot = bot
 
@@ -12,4 +12,4 @@ class Quonauts:
 
 
 def setup(bot):
-    bot.add_cog(Quonauts(bot))
+    bot.add_cog(Proposals(bot))
