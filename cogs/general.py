@@ -4,7 +4,6 @@ import time
 
 from discord.ext import commands
 from utils import l, make_embed
-from cogs.utils import is_meta
 from constants import colors, info
 
 
@@ -43,13 +42,11 @@ class General:
         self.bot.add_command(self.bot.original_help)
 
     @commands.command()
-    @commands.check(is_meta)
     async def ping(self, ctx):
         """Ping the bot."""
         await ctx.send("Pong!")
 
     @commands.command(aliases=['h', 'man'])
-    @commands.check(is_meta)
     async def help(self, ctx, *, command_name: str = None):
         """Display a list of all commands or display information about a specific command."""
         prefix = await self.bot.get_prefix(ctx.message)
@@ -128,11 +125,11 @@ class General:
             ))
 
     @commands.command(aliases=['i', 'info'])
-    @commands.check(is_meta)
     async def about(self, ctx):
         """Display information about the bot."""
         await ctx.send(
             embed=make_embed(
+                color=colors.EMBED_INFO,
                 title=f"About {info.NAME}",
                 description=info.ABOUT_TEXT,
                 fields=[
