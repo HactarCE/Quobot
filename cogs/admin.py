@@ -10,7 +10,39 @@ from discord.ext import commands
 
 from constants import colors
 from database import get_db
-from utils import l, make_embed, react_yes_no, YES_NO_EMBED_COLORS, YES_NO_HUMAN_RESULT, is_bot_admin, report_error
+from utils import l, make_embed, YES_NO_EMBED_COLORS, YES_NO_HUMAN_RESULT, react_yes_no, is_bot_admin, report_error
+
+
+async def reload_extensions(ctx, *extensions):
+    if '*' in extensions:
+        title = "Reloading all extensions"
+    elif len(extensions) > 1:
+        title = "Reloading extensions"
+    else:
+        title = f"Reloading `{extensions[0]}`"
+    embed = make_embed(color=colors.EMBED_INFO, title=title)
+    m = await ctx.send(embed=embed)
+    color = colors.EMBED_SUCCESS
+    description = ""
+    if "*" in extensions:
+        extensions = get_extensions()
+    for extension in extensions:
+        ctx.bot.unload_extension('cogs.' + extension)
+        try:
+            ctx.bot.load_extension('cogs.' + extension)
+            description += f"Successfully loaded `{extension}`.\n"
+        except:
+            color = colors.EMBED_ERROR
+            description += f"Failed to load `{extension}`.\n"
+            _, exc, _ = sys.exc_info()
+            if not isinstance(exc, ImportError):
+                await report_error(ctx.bot, ctx, exc, *extensions)
+    description += "Done."
+    await m.edit(embed=make_embed(
+        color=color,
+        title=title.replace("ing", "ed"),
+        description=description
+    ))
 
 
 class Admin:
@@ -93,38 +125,7 @@ class Admin:
 
         This command is automatically run by `update`.
         """
-        await self.reload_(ctx, *extensions.split())
-
-    async def reload_(self, ctx, *extensions):
-        if '*' in extensions:
-            title = "Reloading all extensions"
-        elif len(extensions) > 1:
-            title = "Reloading extensions"
-        else:
-            title = f"Reloading `{extensions[0]}`"
-        embed = make_embed(color=colors.EMBED_INFO, title=title)
-        m = await ctx.send(embed=embed)
-        color = colors.EMBED_SUCCESS
-        description = ""
-        if "*" in extensions:
-            extensions = get_extensions()
-        for extension in extensions:
-            self.bot.unload_extension('cogs.' + extension)
-            try:
-                self.bot.load_extension('cogs.' + extension)
-                description += f"Successfully loaded `{extension}`.\n"
-            except:
-                color = colors.EMBED_ERROR
-                description += f"Failed to load `{extension}`.\n"
-                _, exc, _ = sys.exc_info()
-                if not isinstance(exc, ImportError):
-                    await report_error(self.bot, ctx, exc, *extensions)
-        description += "Done."
-        await m.edit(embed=make_embed(
-            color=color,
-            title=title.replace("ing", "ed"),
-            description=description
-        ))
+        await reload_extensions(ctx, *extensions.split())
 
     # @commands.group(aliases=['admin'])
     # async def admins(self, ctx):

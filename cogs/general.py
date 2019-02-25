@@ -3,12 +3,12 @@ import discord
 import time
 
 from discord.ext import commands
-from utils import l, make_embed
+from utils import l, make_embed, invoke_command
 from constants import colors, info
 
 
 async def invoke_command_help(ctx):
-    await ctx.invoke(ctx.bot.get_command('help'), command_name=ctx.command.qualified_name)
+    await invoke_command(ctx, 'help', command_name=ctx.command.qualified_name)
 
 
 def get_command_signature(command):

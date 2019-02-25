@@ -155,7 +155,7 @@ class Bot(commands.Bot):
             description = "That command is on cooldown."
         else:
             description = "Sorry, something went wrong.\n\nA team of highly trained monkeys has been dispatched to deal with the situation."
-            await report_error(self, ctx, exc.original, *args, **kwargs)
+            await report_error(ctx, exc.original, *args, **kwargs)
         await ctx.send(embed=make_embed(
             color=colors.EMBED_ERROR,
             title="Error",

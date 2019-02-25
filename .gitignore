@@ -1,6 +1,9 @@
 # Bot secrets
 data/token.txt
 
+# Bot instance data
+data/guilds.json
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

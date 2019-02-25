@@ -1,75 +1,8 @@
 {
     "547582510343782400": {
-        "proposal_channel": "549337219547267083",
-        "proposal_count": 6,
-        "proposals": {
-            "1": {
-                "n": 1,
-                "author": 216295379895844865,
-                "content": "NEW PROPOSAL",
-                "message": 549388557849067551,
-                "votes": {
-                    "for": [],
-                    "against": [],
-                    "abstain": []
-                }
-            },
-            "2": {
-                "n": 2,
-                "author": 216295379895844865,
-                "content": "NEW PROPOSAL NOW",
-                "message": 549388641017921577,
-                "votes": {
-                    "for": [],
-                    "against": [],
-                    "abstain": []
-                }
-            },
-            "3": {
-                "n": 3,
-                "author": 216295379895844865,
-                "content": "THIS IS A  BVLVSEIRTHNIESRTHKEIFSR",
-                "message": 549388953808273408,
-                "votes": {
-                    "for": [],
-                    "against": [],
-                    "abstain": []
-                }
-            },
-            "4": {
-                "n": 4,
-                "author": 216295379895844865,
-                "content": "NTESIRNTEISRNTE I NIETNOHFTYULGHJ)*(#FGJH(#*FH",
-                "message": 549389159471775755,
-                "votes": {
-                    "for": [],
-                    "against": [],
-                    "abstain": []
-                }
-            },
-            "5": {
-                "n": 5,
-                "author": 216295379895844865,
-                "content": "PROPOSAL -- the one that will finally work?",
-                "message": 549389671030063124,
-                "votes": {
-                    "for": [],
-                    "against": [],
-                    "abstain": []
-                }
-            },
-            "6": {
-                "n": 6,
-                "author": 216295379895844865,
-                "content": "My proposal.",
-                "message": 549389822179934210,
-                "votes": {
-                    "for": [],
-                    "against": [],
-                    "abstain": []
-                }
-            }
-        },
+        "proposal_channel": "549391432461582339",
+        "proposal_count": 0,
+        "proposals": {},
         "allow_abstain": false
     }
 }

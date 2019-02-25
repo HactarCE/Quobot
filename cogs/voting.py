@@ -6,7 +6,7 @@ from discord.ext import commands
 
 from constants import colors
 from database import DATA_DIR, get_db
-from utils import make_embed, react_yes_no, YES_NO_EMBED_COLORS, YES_NO_HUMAN_RESULT, is_bot_admin, mutget, mutset
+from utils import make_embed, YES_NO_EMBED_COLORS, YES_NO_HUMAN_RESULT, react_yes_no, is_bot_admin, invoke_command, mutget, mutset
 
 from cogs.general import invoke_command_help
 
@@ -27,7 +27,7 @@ def guild_get(ctx, *args):
 def guild_mutset(ctx, keys, *args):
     return mutset(guilds_data, [str(ctx.guild.id)] + keys, *args)
 
-def get_proposal_list(ctx):
+def get_proposals(ctx):
     return guild_mutget(ctx, ['proposals'], {})
 
 def get_proposal(ctx, proposal_num):
@@ -91,14 +91,14 @@ async def submit_proposal(ctx, content):
             },
         })
         guilds_data.save()
-        await ctx.invoke(ctx.bot.get_command('proposal refresh'), proposal_num=proposal_num)
+        await invoke_command(ctx, 'proposal refresh', proposal_num)
 
 
 class Proposals:
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.group()
+    @commands.group(aliases=['pr', 'prop'])
     async def proposal(self, ctx):
         """Manage various systems pertaining to proposals."""
         if ctx.invoked_subcommand is None:
@@ -106,22 +106,22 @@ class Proposals:
 
     @proposal.group('channel')
     @commands.check(is_bot_admin)
-    async def proposalchannel(self, ctx):
+    async def proposal_channel(self, ctx):
         """Manage the proposal channel."""
         if ctx.invoked_subcommand is ctx.command:
             proposal_channel = get_proposal_channel(ctx)
             if proposal_channel is None:
-                description = "There is currently no proposal channel. Use `proposal channel set [channel]` to set one."
+                description = f"There is currently no proposal channel. Use `{ctx.command.qualified_name} set [channel]` to set one."
             else:
-                description = f"The current proposal channel {proposal_channel.mention}. Use `proposal channel set [channel]` to change it or `proposal channel reset` to remove it."
+                description = f"The current proposal channel {proposal_channel.mention}. Use `{ctx.command.qualified_name} set [channel]` to change it or `{ctx.command.qualified_name} reset` to remove it."
             await ctx.send(embed=make_embed(
                 color=colors.EMBED_INFO,
                 title="Proposal channel",
                 description=description
             ))
 
-    @proposalchannel.command('reset')
-    async def reset_proposalchannel(self, ctx):
+    @proposal_channel.command('reset')
+    async def reset_proposal_channel(self, ctx):
         """Reset the proposal channel."""
         proposal_channel = get_proposal_channel(ctx)
         if proposal_channel is None:
@@ -146,8 +146,8 @@ class Proposals:
                 description="There is now no proposal channel" if response == 'y' else None
             ))
 
-    @proposalchannel.command('set')
-    async def set_proposalchannel(self, ctx, channel: commands.TextChannelConverter=None):
+    @proposal_channel.command('set')
+    async def set_proposal_channel(self, ctx, channel: commands.TextChannelConverter=None):
         """Set the proposal channel.
 
         If no argument is supplied, then the current channel will be used.
@@ -189,7 +189,7 @@ class Proposals:
         """Submit a proposal. See `proposal submit`."""
         await submit_proposal(ctx, content.strip())
 
-    @proposal.command('submit', rest_is_raw=True)
+    @proposal.command('submit', aliases=['sub'], rest_is_raw=True)
     async def submit_proposal__proposal_submit(self, ctx, *, content):
         """Submit a proposal.
 
@@ -206,29 +206,40 @@ class Proposals:
         await submit_proposal(ctx, content.strip())
 
     @proposal.command('refresh')
-    async def refresh_proposal(self, ctx, proposal_num: int):
-        """Refresh a proposal message.
+    async def refresh_proposal(self, ctx, *proposal_nums: int):
+        """Refresh one or more proposal messages.
 
         This is mostly useful for fixing minor glitches, or if voting rules have
         changed.
         """
-        proposal = get_proposal(ctx, str(proposal_num))
-        if proposal is None:
-            return
-        # await asyncio.sleep(5) # Give time for Discord to process the message.
-        m = await get_proposal_channel(ctx).get_message(int(proposal.get('message')))
-        fields = []
-        for s in ["For", "Against", "Abstain"]:
-            fields.append((s, await format_user_list(ctx, mutget(proposal, ['votes', s.lower()], [])), True))
-        if not guild_mutget(ctx, ['allow_abstain'], False):
-            del fields[-1]
-        await m.edit(embed=make_embed(
-            color=colors.EMBED_INFO,
-            title=f"#{proposal.get('n')}",
-            description=proposal.get('content'),
-            fields=fields,
-            footer=f"Proposed by {ctx.bot.get_user(proposal.get('author')).mention}"
-        ))
+        success = False
+        for proposal_num in proposal_nums:
+            proposal = get_proposal(ctx, str(proposal_num))
+            if proposal is None:
+                return
+            # await asyncio.sleep(5) # Give time for Discord to process the message.
+            m = await get_proposal_channel(ctx).get_message(int(proposal.get('message')))
+            fields = []
+            for s in ["For", "Against", "Abstain"]:
+                fields.append((s, await format_user_list(ctx, mutget(proposal, ['votes', s.lower()], [])), True))
+            if not guild_mutget(ctx, ['allow_abstain'], False):
+                del fields[-1]
+            try:
+                await m.edit(embed=make_embed(
+                    color=colors.EMBED_INFO,
+                    title=f"#{proposal.get('n')}",
+                    description=proposal.get('content'),
+                    fields=fields,
+                    footer=f"Proposed by {ctx.bot.get_user(proposal.get('author')).mention}"
+                ))
+                success = True
+            except:
+                pass
+        if ctx.command.qualified_name == 'proposal refresh':
+            if not proposal_nums:
+                await invoke_command_help(ctx)
+            elif success:
+                await ctx.message.add_reaction('\N{THUMBS UP SIGN}')
 
     async def on_message(self, message):
         try:
@@ -245,6 +256,98 @@ class Proposals:
                 await submit_proposal(await self.bot.get_context(message), content)
         except:
             pass
+
+    async def remove_proposals(self, ctx, proposal_nums):
+        """Remove a number of proposals.
+
+        proposal_nums -- Either a list of integers or the string 'all'
+        """
+        proposal_amount = 'ALL' if proposal_nums == 'all' else len(proposal_nums)
+        proposal_pluralized = f"proposal{'s' * (len(proposal_nums) != 1)}"
+        for i in range(1 + (get_proposal_count(ctx) >= 10)):
+            description = [
+                "Are you sure? This cannot be undone.",
+                "No seriously, this is permanent. Are you sure about this?"
+            ][i]
+            embed = make_embed(
+                color=colors.EMBED_ASK,
+                title=f"Remove {proposal_amount} {proposal_pluralized}?",
+                description=description
+            )
+            if i == 0:
+                m = await ctx.send(embed=embed)
+            else:
+                await m.clear_reactions()
+                await m.edit(embed=embed)
+            response = await react_yes_no(ctx, m)
+            if response != 'y':
+                await m.edit(embed=make_embed(
+                    color=YES_NO_EMBED_COLORS[response],
+                    title=f"Proposal removal {YES_NO_HUMAN_RESULT[response]}"
+                ))
+                return
+        if proposal_nums == 'all':
+            proposal_nums = list(range(1, get_proposal_count(ctx) + 1))
+        human_proposals = f"{len(proposal_nums)} proposal{'s' * (len(proposal_nums) != 1)}"
+        title = f"Removing {human_proposals}\N{HORIZONTAL ELLIPSIS}"
+        await m.edit(embed=make_embed(
+            color=colors.EMBED_INFO,
+            title=title,
+            description="Removing proposals\N{HORIZONTAL ELLIPSIS}"
+        ))
+        number_sequence = list(range(1, get_proposal_count(ctx) + 1))
+        proposals = get_proposals(ctx)
+        for n in proposal_nums:
+            proposal = proposals.get(str(n))
+            if proposal:
+                del proposals[str(n)]
+                number_sequence.remove(n)
+                try:
+                    message = await get_proposal_channel(ctx).get_message(proposal.get('message'))
+                    await message.delete()
+                except:
+                    pass
+        set_proposal_count(ctx, len(number_sequence))
+        if number_sequence:
+            await m.edit(embed=make_embed(
+                color=colors.EMBED_INFO,
+                title=title,
+                description="Renumbering remaining proposals\N{HORIZONTAL ELLIPSIS}"
+            ))
+            moved_proposals = []
+            for i in range(len(number_sequence)):
+                old_num = str(number_sequence[i])
+                new_num = str(i + 1)
+                if old_num != new_num:
+                    proposals[new_num] = proposals[old_num]
+                    del proposals[old_num]
+                    proposals[new_num]['n'] = new_num
+                    moved_proposals.append(new_num)
+            guilds_data.save()
+            await invoke_command(ctx, 'proposal refresh', *moved_proposals)
+        else:
+            guilds_data.save()
+        await m.edit(embed=make_embed(
+            color=colors.EMBED_SUCCESS,
+            title=f"Removed {human_proposals}"
+        ))
+
+    @proposal.command('removeall', aliases=['deleteall'])
+    async def proposal_removeall(self, ctx):
+        """Remove all proposals."""
+        await self.remove_proposals(ctx, 'all')
+
+    @proposal.command('remove', aliases=['del', 'delete', 'rm'])
+    @commands.check(is_bot_admin)
+    async def proposal_remove(self, ctx, *proposal_nums: int):
+        """Remove one or more proposals (and renumber subsequent ones accordingly)."""
+        if proposal_nums:
+            await self.remove_proposals(ctx, proposal_nums)
+        else:
+            await invoke_command_help(ctx)
+
+    # @proposal.command()
+    # async def mark_proposal(self, ctx, marking, *proposal_nums: int):
 
 
 def setup(bot):

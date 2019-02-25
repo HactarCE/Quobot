@@ -93,7 +93,7 @@ async def is_bot_admin(ctx):
     return False
 
 
-async def report_error(bot, ctx, exc, *args, **kwargs):
+async def report_error(ctx, exc, *args, **kwargs):
     if ctx:
         if isinstance(ctx.channel, discord.DMChannel):
             guild_name = "N/A"
@@ -124,12 +124,15 @@ async def report_error(bot, ctx, exc, *args, **kwargs):
         ("Keyword Args", f"```\n{repr(kwargs)}\n```" if kwargs else "None", True),
         ("Traceback", tb),
     ]
-    await bot.app_info.owner.send(embed=make_embed(
+    await ctx.bot.app_info.owner.send(embed=make_embed(
         color=colors.EMBED_ERROR,
         title="Error",
         description=f"`{str(exc)}`",
         fields=fields,
     ))
+
+async def invoke_command(ctx, command_name_to_invoke, *args, **kwargs):
+    await ctx.invoke(ctx.bot.get_command(command_name_to_invoke), *args, **kwargs)
 
 def mutget(d, keys, value=None):
     """Returns the value in a nested dictionary, setting anything undefined to
