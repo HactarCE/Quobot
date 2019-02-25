@@ -372,14 +372,19 @@ class Proposals:
 
     async def set_proposal_statuses(self, ctx, new_status, proposal_nums):
         if proposal_nums:
-            for n in proposal_nums:
-                get_proposal(ctx, n)['status'] = new_status
-            guilds_data.save()
-            await invoke_command(ctx, 'proposal refresh', *proposal_nums)
-            await ctx.message.add_reaction(emoji.APPROVE)
-            if ctx.channel.id == get_proposal_channel(ctx).id:
-                await asyncio.sleep(3)
-                await ctx.message.delete()
+            try:
+                for n in proposal_nums:
+                    proposal = get_proposal(ctx, n)
+                    if proposal:
+                        proposal['status'] = new_status
+                guilds_data.save()
+                await invoke_command(ctx, 'proposal refresh', *proposal_nums)
+                await ctx.message.add_reaction(emoji.APPROVE)
+                if ctx.channel.id == get_proposal_channel(ctx).id:
+                    await asyncio.sleep(3)
+                    await ctx.message.delete()
+            except:
+                pass
         else:
             await invoke_command_help(ctx)
 
