@@ -1,5 +1,6 @@
 import json
-from os import path
+from os import path, remove, rename
+from tempfile import mkstemp
 
 from utils import l, LOG_SEP
 
@@ -17,18 +18,28 @@ def load_data(filename):
     try:
         with open(path.join(DATA_DIR, filename), 'r', encoding='utf-8') as f:
             data = json.load(f)
-        l.info(f"Successfully loaded {filename}.")
-        # l.info(LOG_SEP)
+        l.info(f"Loaded data file {filename}")
         return data
     except:
-        l.warning(f"There was an error loading {filename}.")
-        # l.info(LOG_SEP)
+        l.warning(f"There was an error loading {filename}; assuming empty dictionary")
         return {}
 
 
 def save_data(filename, data):
-    with open(path.join(DATA_DIR, filename), 'w', encoding='utf-8') as f:
-        json.dump(data, f)
+    # Use a temporary file so that the original one doesn't get corrupted in the
+    # case of an error.
+    try:
+        tempfile, tempfile_path = mkstemp(dir=DATA_DIR)
+        with open(tempfile, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=4)
+        rename(tempfile_path, path.join(DATA_DIR, filename))
+    finally:
+        try:
+            remove(tempfile_path)
+        except:
+            pass
+    # with open(path.join(DATA_DIR, filename), 'w', encoding='utf-8') as f:
+    #     json.dump(data, f)
 
 
 databases = {}
@@ -46,7 +57,7 @@ class DB(dict):
         try:
             self.reload()
         except:
-            print(f"Unable to load {self.filename}; silently ignoring.")
+            l.warning(f"There was an error loading {self.filename}; silently ignoring")
 
     def reload(self):
         self.clear()

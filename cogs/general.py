@@ -7,6 +7,10 @@ from utils import l, make_embed
 from constants import colors, info
 
 
+async def invoke_command_help(ctx):
+    await ctx.invoke(ctx.bot.get_command('help'), command_name=ctx.command.qualified_name)
+
+
 def get_command_signature(command):
     # almost entirely copied from within discord.ext.commands, but ignores aliases
     result = command.qualified_name
@@ -85,14 +89,12 @@ class General:
                     misc += "This command is usually hidden.\n"
                 if misc:
                     fields.append(("Miscellaneous", misc))
-                print(fields)
                 await ctx.send(embed=make_embed(
                     color=colors.EMBED_HELP,
                     title="Command help",
                     description=f"`{command.name}`",
                     fields=fields,
                 ))
-                print('what do you know?')
             else:
                 await ctx.send(embed=make_embed(
                     color=colors.EMBED_ERROR,

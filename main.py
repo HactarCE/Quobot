@@ -117,7 +117,7 @@ class Bot(commands.Bot):
     async def on_message(self, message):
         """This event triggers on every message received by the bot. Including ones that it sent itself."""
         if message.author.bot:
-            return  # ignore all bots
+            return # Ignore all bots.
         await self.process_commands(message)
 
     async def on_command_error(self, ctx, exc, *args, **kwargs):

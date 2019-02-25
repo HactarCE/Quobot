@@ -114,10 +114,15 @@ async def report_error(bot, ctx, exc, *args, **kwargs):
     else:
         fields = []
     tb = ''.join(traceback.format_tb(exc.__traceback__))
+    tb = f"```\n{tb.replace('```', '` ` `')}"
+    if len(tb) > 1000:
+        tb = tb[:1000] + '\n```(truncated)'
+    else:
+        tb += '\n```'
     fields += [
         ("Args", f"```\n{repr(args)}\n```" if args else "None", True),
         ("Keyword Args", f"```\n{repr(kwargs)}\n```" if kwargs else "None", True),
-        ("Traceback", f"```\n{tb.replace('```', '` ` `')}\n```"),
+        ("Traceback", tb),
     ]
     await bot.app_info.owner.send(embed=make_embed(
         color=colors.EMBED_ERROR,
@@ -125,3 +130,51 @@ async def report_error(bot, ctx, exc, *args, **kwargs):
         description=f"`{str(exc)}`",
         fields=fields,
     ))
+
+def mutget(d, keys, value=None):
+    """Returns the value in a nested dictionary, setting anything undefined to
+    new dictionaries except for the last one, which is set to the provided
+    value if undefined. Like dict.get(), but mutates the original dictionary and can handle
+    nested dictionaries/arrays.
+
+    Examples:
+
+    my_dict = {'a': {}}
+    ensure_dict(my_dict, ['a', 'b', 'c'], 4)
+    # The return value is 4.
+    # my_dict is now {'a': {'b': {'c': 4}}.
+
+    my_dict = {'a': {'b': {'c': 17}}}
+    ensure_dict(my_dict, ['a', 'b', 'c'], 4)
+    # The return value is 17.
+    # my_dict does not change.
+    """
+    od = d
+    for key in keys[:-1]:
+        if key not in d:
+            d[key] = {}
+        d = d[key]
+    if keys[-1] not in d:
+        d[keys[-1]] = value
+    return d[keys[-1]]
+
+def mutset(d, keys, value):
+    """Sets the value in a nested dictionary, setting anything undefined to
+    new dictionaries except for the last one, which is set to the provided
+    value. Like mutget(), but always sets the last value.
+
+    Examples:
+
+    my_dict = {'a': {}}
+    ensure_dict(my_dict, ['a', 'b', 'c'], 4)
+    # The return value is 4.
+    # my_dict is now {'a': {'b': {'c': 4}}.
+    # This is the same as mutget().
+
+    my_dict = {'a': {'b': {'c': 17}}}
+    ensure_dict(my_dict, ['a', 'b', 'c'], 4)
+    # The return value is 7.
+    # my_dict is now {'a': {'b': 'c': 4}}.
+    # This is NOT the same as mutget().
+    """
+    mutget(d, keys[:-1], {})[keys[-1]] = value
