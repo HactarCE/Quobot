@@ -4,7 +4,7 @@ from os import path
 import discord
 from discord.ext import commands
 
-from constants import colors
+from constants import colors, emoji
 from database import DATA_DIR, get_db
 from utils import make_embed, YES_NO_EMBED_COLORS, YES_NO_HUMAN_RESULT, react_yes_no, is_bot_admin, invoke_command, mutget, mutset
 
@@ -27,6 +27,9 @@ def guild_get(ctx, *args):
 def guild_mutset(ctx, keys, *args):
     return mutset(guilds_data, [str(ctx.guild.id)] + keys, *args)
 
+def get_allow_abstain(ctx):
+    return guild_mutget(ctx, ['allow_abstain'], False)
+
 def get_proposals(ctx):
     return guild_mutget(ctx, ['proposals'], {})
 
@@ -48,7 +51,7 @@ def set_proposal_count(ctx, new_count):
 async def format_user_list(ctx, user_ids):
     mention_list = []
     for user_id in user_ids:
-        mention_list.append(await ctx.bot.get_user(int(user_id)))
+        mention_list.append(ctx.bot.get_user(int(user_id)).mention)
     return '\n'.join(mention_list) or "(none)"
 
 async def submit_proposal(ctx, content):
@@ -84,6 +87,8 @@ async def submit_proposal(ctx, content):
             'author': ctx.author.id,
             'content': content,
             'message': m.id,
+            # 'status' can be 'voting', 'passed', or 'failed'
+            'status': 'voting',
             'votes': {
                 'for': [],
                 'against': [],
@@ -104,7 +109,7 @@ class Proposals:
         if ctx.invoked_subcommand is None:
             await invoke_command_help(ctx)
 
-    @proposal.group('channel')
+    @proposal.group('channel', aliases=['chan'])
     @commands.check(is_bot_admin)
     async def proposal_channel(self, ctx):
         """Manage the proposal channel."""
@@ -222,16 +227,32 @@ class Proposals:
             fields = []
             for s in ["For", "Against", "Abstain"]:
                 fields.append((s, await format_user_list(ctx, mutget(proposal, ['votes', s.lower()], [])), True))
-            if not guild_mutget(ctx, ['allow_abstain'], False):
+            if not get_allow_abstain(ctx):
                 del fields[-1]
             try:
+                user = ctx.bot.get_user(proposal.get('author'))
+                status = proposal.get('status')
+                pass_fail_text = ''
+                if status != 'voting':
+                    pass_fail_text = "   \N{EM DASH}   "
+                    pass_fail_text += status.capitalize()
                 await m.edit(embed=make_embed(
-                    color=colors.EMBED_INFO,
-                    title=f"#{proposal.get('n')}",
+                    color={
+                        'voting': colors.EMBED_INFO,
+                        'passed': colors.EMBED_SUCCESS,
+                        'failed': colors.EMBED_ERROR,
+                    }[status],
+                    title=f"Proposal #{proposal.get('n')}{pass_fail_text}",
                     description=proposal.get('content'),
                     fields=fields,
-                    footer=f"Proposed by {ctx.bot.get_user(proposal.get('author')).mention}"
+                    footer_text=f"Proposed by {user.name}#{user.discriminator}"
                 ))
+                await m.clear_reactions()
+                if status == 'voting':
+                    await m.add_reaction(emoji.VOTE_FOR)
+                    await m.add_reaction(emoji.VOTE_AGAINST)
+                    if get_allow_abstain(ctx):
+                        await m.add_reaction(emoji.VOTE_ABSTAIN)
                 success = True
             except:
                 pass
@@ -239,7 +260,10 @@ class Proposals:
             if not proposal_nums:
                 await invoke_command_help(ctx)
             elif success:
-                await ctx.message.add_reaction('\N{THUMBS UP SIGN}')
+                await ctx.message.add_reaction(emoji.APPROVE)
+            if ctx.channel.id == get_proposal_channel(ctx):
+                await asyncio.sleep(3)
+                await ctx.message.delete()
 
     async def on_message(self, message):
         try:
@@ -346,8 +370,76 @@ class Proposals:
         else:
             await invoke_command_help(ctx)
 
-    # @proposal.command()
-    # async def mark_proposal(self, ctx, marking, *proposal_nums: int):
+    async def set_proposal_statuses(self, ctx, new_status, proposal_nums):
+        if proposal_nums:
+            for n in proposal_nums:
+                get_proposal(ctx, n)['status'] = new_status
+            guilds_data.save()
+            await invoke_command(ctx, 'proposal refresh', *proposal_nums)
+            await ctx.message.add_reaction(emoji.APPROVE)
+            if ctx.channel.id == get_proposal_channel(ctx).id:
+                await asyncio.sleep(3)
+                await ctx.message.delete()
+        else:
+            await invoke_command_help(ctx)
+
+    @proposal.command('revote')
+    async def revote_proposal(self, ctx, *proposal_nums: int):
+        """Reopen one or more proposals for voting."""
+        await self.set_proposal_statuses(ctx, 'voting', proposal_nums)
+
+    @proposal.command('pass')
+    async def pass_proposal(self, ctx, *proposal_nums: int):
+        """Mark one or more proposals as passed, and lock voting on them."""
+        await self.set_proposal_statuses(ctx, 'passed', proposal_nums)
+
+    @proposal.command('fail')
+    async def fail(self, ctx, *proposal_nums: int):
+        """Mark one or more proposals as failed, and lock voting on them."""
+        await self.set_proposal_statuses(ctx, 'failed', proposal_nums)
+
+    @commands.command('revote')
+    async def revote_proposal2(self, ctx, *proposal_nums: int):
+        """Reopen one or more proposals for voting. See `proposal revote`."""
+        await self.set_proposal_statuses(ctx, 'voting', proposal_nums)
+
+    @commands.command('pass')
+    async def pass_proposal2(self, ctx, *proposal_nums: int):
+        """Mark one or more proposals as passed, and lock voting on them. See `proposal revote`."""
+        await self.set_proposal_statuses(ctx, 'passed', proposal_nums)
+
+    @commands.command('fail')
+    async def fail_proposal2(self, ctx, *proposal_nums: int):
+        """Mark one or more proposals as failed, and lock voting on them. See `proposal revote`."""
+        await self.set_proposal_statuses(ctx, 'failed', proposal_nums)
+
+    async def on_raw_reaction_add(self, payload):
+        ctx = await self.bot.get_context(await self.bot.get_channel(payload.channel_id).get_message(payload.message_id))
+        if payload.channel_id != get_proposal_channel(ctx).id:
+            return
+        if ctx.bot.get_user(payload.user_id).bot:
+            return
+        for proposal in get_proposals(ctx).values():
+            if proposal.get('message') == payload.message_id:
+                try:
+                    if proposal.get('status') != 'voting':
+                        raise Exception("Voting is closed for this proposal.")
+                    votes = proposal.get('votes')
+                    voting_users = set(votes.get('for') + votes.get('against') + votes.get('abstain'))
+                    if payload.user_id in voting_users:
+                        raise Exception("You can't vote twice or change your vote.")
+                    vote_type = {
+                        emoji.VOTE_FOR: 'for',
+                        emoji.VOTE_AGAINST: 'against',
+                        emoji.VOTE_ABSTAIN: 'abstain',
+                    }[payload.emoji.name]
+                    if vote_type == 'abstain' and not get_allow_abstain(ctx):
+                        raise Exception("Abstaining is not allowing.")
+                    votes[vote_type].append(payload.user_id)
+                    guilds_data.save()
+                    await invoke_command(ctx, 'proposal refresh', proposal.get('n'))
+                except:
+                    await ctx.message.remove_reaction(payload.emoji, ctx.guild.get_member(payload.user_id))
 
 
 def setup(bot):

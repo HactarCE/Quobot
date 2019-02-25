@@ -1,8 +1,49 @@
 {
     "547582510343782400": {
-        "proposal_channel": "549391432461582339",
-        "proposal_count": 0,
-        "proposals": {},
+        "proposal_channel": "549428405968306186",
+        "proposal_count": 3,
+        "proposals": {
+            "1": {
+                "n": 1,
+                "author": 216295379895844865,
+                "content": "This is a proposal",
+                "message": 549429796417830922,
+                "status": "failed",
+                "votes": {
+                    "for": [],
+                    "against": [],
+                    "abstain": []
+                }
+            },
+            "2": {
+                "n": 2,
+                "author": 216295379895844865,
+                "content": "This is another proposal",
+                "message": 549434994414583849,
+                "status": "passed",
+                "votes": {
+                    "for": [
+                        216295379895844865
+                    ],
+                    "against": [],
+                    "abstain": []
+                }
+            },
+            "3": {
+                "n": 3,
+                "author": 216295379895844865,
+                "content": "And this is a third proposal!",
+                "message": 549435039004491776,
+                "status": "failed",
+                "votes": {
+                    "for": [],
+                    "against": [
+                        216295379895844865
+                    ],
+                    "abstain": []
+                }
+            }
+        },
         "allow_abstain": false
     }
 }
