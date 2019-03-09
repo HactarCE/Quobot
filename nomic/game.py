@@ -1,5 +1,5 @@
 import asyncio
-import datetime
+from datetime import datetime
 
 from discord.ext import commands
 
@@ -61,6 +61,7 @@ class Game:
             color=colors.EMBED_INFO,
             title=f"Preparing proposal #{self.proposal_count}\N{HORIZONTAL ELLIPSIS}"
         ))
+        timestamp = datetime.utcnow()
         mutset(self.guild_data, ['proposals', str(self.proposal_count)], {
             'n': self.proposal_count,
             'author': ctx.author.id,
@@ -73,12 +74,14 @@ class Game:
                 'against': {},
                 'abstain': {},
             },
+            'timestamp': timestamp.timestamp(),
         })
         self.save()
         nomic.logging.add_to_proposal_log(self.guild,
+            timestamp=timestamp,
             event_name='submit',
             user_id=ctx.author.id,
-            proposal_number=self.proposal_count,
+            proposal_number=self.proposal_count
         )
         await self.refresh_proposal(self.proposal_count)
 
@@ -123,6 +126,7 @@ class Game:
                 if status != 'voting':
                     pass_fail_text = "   \N{EM DASH}   "
                     pass_fail_text += status.capitalize()
+                timestamp = datetime.fromtimestamp(proposal.get('timestamp'))
                 embed = make_embed(
                     color={
                         'voting': colors.EMBED_INFO,
@@ -132,8 +136,7 @@ class Game:
                     title=f"Proposal #{proposal.get('n')}{pass_fail_text}",
                     description=proposal.get('content'),
                     fields=fields,
-                    footer_text=f"Proposed by {member.name}#{member.discriminator} on {proposal.get('timestamp')}"
-                    # TODO format timestamp
+                    footer_text=f"Submitted at {timestamp.strftime('UTC %H:%M:%S on %Y-%m-%d')} by {member.name}#{member.discriminator}"
                 )
                 if m is None:
                     m = await self.proposal_channel.send(embed=embed)
@@ -173,7 +176,6 @@ class Game:
 
 
     async def remove_proposal(self, user, *proposal_nums, reason='', m=None):
-        print(repr(proposal_nums))
         if m:
             human_proposals = f"{len(proposal_nums)} proposal{'s' * (len(proposal_nums) != 1)}"
             title = f"Removing {human_proposals}\N{HORIZONTAL ELLIPSIS}"
