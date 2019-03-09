@@ -2,23 +2,18 @@
 
 import asyncio
 import logging
-from os import path
-from pathlib import Path
 
-import discord
-from discord.ext import commands
+try:
+    import discord
+    from discord.ext import commands
+except ImportError:
+    print("Discord.py is required. See the README for instructions on installing it.")
+    exit(1)
 
 from cogs import get_extensions
 from constants import colors, info
 from database import DATA_DIR, get_db, TOKEN_FILE_PATH, get_token
 from utils import l, LOG_SEP, make_embed, report_error
-
-
-try:
-    import discord
-except ImportError:
-    print("Discord.py is required. See the README for instructions on installing it.")
-    exit(1)
 
 
 async def run():
@@ -130,8 +125,10 @@ class Bot(commands.Bot):
                 description = "Too many arguments."
             elif isinstance(exc, commands.BadArgument):
                 description = f"Bad argument:\n```\n{str(exc)}\n```"
+            elif exc.args:
+                description = exc.args[0]
             else:
-                description = f"Bad user input."
+                description = "Bad user input."
             description += f"\n\nRun `{COMMAND_PREFIX}help {command_name}` to view the required arguments."
         elif isinstance(exc, commands.CommandNotFound):
             # description = f"Could not find command `{ctx.invoked_with.split()[0]}`."

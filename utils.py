@@ -5,11 +5,13 @@ import traceback
 import discord
 from discord.ext import commands
 
-from constants import emoji, colors
+from constants import colors, emoji, info
+
 
 l = logging.getLogger('bot')
 
 LOG_SEP = '-' * 20
+
 
 def make_embed(*, fields=[], footer_text=None, **kwargs):
     """Makes an embed.
@@ -94,45 +96,62 @@ async def is_bot_admin(ctx):
 
 
 async def report_error(ctx, exc, *args, **kwargs):
-    if ctx:
-        if isinstance(ctx.channel, discord.DMChannel):
-            guild_name = "N/A"
-            channel_name = f"DM"
-        elif isinstance(ctx.channel, discord.GroupChannel):
-            guild_name = "N/A"
-            channel_name = f"Group with {len(ctx.channel.recipients)} members (id={ctx.channel.id})"
+    if info.DEV:
+        for entry in traceback.format_tb(exc.__traceback__):
+            for line in entry.splitlines():
+                l.error(line)
+        l.error('')
+    else:
+        if ctx:
+            if isinstance(ctx.channel, discord.DMChannel):
+                guild_name = "N/A"
+                channel_name = f"DM"
+            elif isinstance(ctx.channel, discord.GroupChannel):
+                guild_name = "N/A"
+                channel_name = f"Group with {len(ctx.channel.recipients)} members (id={ctx.channel.id})"
+            else:
+                guild_name = ctx.guild.name
+                channel_name = f"{ctx.channel.mention}"
+            user = ctx.author
+            fields = [
+                ("Guild", guild_name, True),
+                ("Channel", channel_name, True),
+                ("User", f"{user} (A.K.A. {user.display_name})"),
+                ("Message Content", f"{ctx.message.content}"),
+            ]
         else:
-            guild_name = ctx.guild.name
-            channel_name = f"{ctx.channel.mention}"
-        user = ctx.author
-        fields = [
-            ("Guild", guild_name, True),
-            ("Channel", channel_name, True),
-            ("User", f"{user} (A.K.A. {user.display_name})"),
-            ("Message Content", f"{ctx.message.content}"),
+            fields = []
+        tb = ''.join(traceback.format_tb(exc.__traceback__))
+        tb = f"```\n{tb.replace('```', '` ` `')}"
+        if len(tb) > 1000:
+            tb = tb[:1000] + '\n```(truncated)'
+        else:
+            tb += '\n```'
+        fields += [
+            ("Args", f"```\n{repr(args)}\n```" if args else "None", True),
+            ("Keyword Args", f"```\n{repr(kwargs)}\n```" if kwargs else "None", True),
+            ("Traceback", tb),
         ]
-    else:
-        fields = []
-    tb = ''.join(traceback.format_tb(exc.__traceback__))
-    tb = f"```\n{tb.replace('```', '` ` `')}"
-    if len(tb) > 1000:
-        tb = tb[:1000] + '\n```(truncated)'
-    else:
-        tb += '\n```'
-    fields += [
-        ("Args", f"```\n{repr(args)}\n```" if args else "None", True),
-        ("Keyword Args", f"```\n{repr(kwargs)}\n```" if kwargs else "None", True),
-        ("Traceback", tb),
-    ]
-    await ctx.bot.app_info.owner.send(embed=make_embed(
-        color=colors.EMBED_ERROR,
-        title="Error",
-        description=f"`{str(exc)}`",
-        fields=fields,
-    ))
+        await ctx.bot.app_info.owner.send(embed=make_embed(
+            color=colors.EMBED_ERROR,
+            title="Error",
+            description=f"`{str(exc)}`",
+            fields=fields,
+        ))
+
 
 async def invoke_command(ctx, command_name_to_invoke, *args, **kwargs):
     await ctx.invoke(ctx.bot.get_command(command_name_to_invoke), *args, **kwargs)
+
+
+def human_list(words, oxford_comma=True):
+    words = list(words)
+    if len(words) == 0:
+        return "(none)"
+    elif len(words) == 1:
+        return words[0]
+    return ", ".join(words[:-1]) + ("," if oxford_comma else '') + " and " + words[-1]
+
 
 def mutget(d, keys, value=None):
     """Returns the value in a nested dictionary, setting anything undefined to
@@ -152,7 +171,8 @@ def mutget(d, keys, value=None):
     # The return value is 17.
     # my_dict does not change.
     """
-    od = d
+    if not keys:
+        return d
     for key in keys[:-1]:
         if key not in d:
             d[key] = {}
@@ -170,14 +190,34 @@ def mutset(d, keys, value):
 
     my_dict = {'a': {}}
     ensure_dict(my_dict, ['a', 'b', 'c'], 4)
-    # The return value is 4.
     # my_dict is now {'a': {'b': {'c': 4}}.
     # This is the same as mutget().
 
     my_dict = {'a': {'b': {'c': 17}}}
     ensure_dict(my_dict, ['a', 'b', 'c'], 4)
-    # The return value is 7.
     # my_dict is now {'a': {'b': 'c': 4}}.
     # This is NOT the same as mutget().
     """
     mutget(d, keys[:-1], {})[keys[-1]] = value
+
+def lazy_mutget(d, keys, value_lambda):
+    """Like mutget(), but value is a lambda that is only evaluated if there is
+    no existing value."""
+    d = mutget(d, keys[:-1])
+    if keys[-1] not in d:
+        mutset(d, [keys[-1]], value_lambda())
+    return d[keys[-1]]
+
+
+class MultiplierConverter(commands.Converter):
+    async def convert(self, ctx, argument):
+        s = argument.lower().strip()
+        try:
+            if s.startswith('x'):
+                return int(s[1:])
+            elif s.endswith('x'):
+                return int(s[:-1])
+            else:
+                return int(s)
+        except:
+            raise discord.CommandError("Unable to convert to multiplier")

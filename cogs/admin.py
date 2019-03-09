@@ -23,7 +23,7 @@ async def reload_extensions(ctx, *extensions):
     embed = make_embed(color=colors.EMBED_INFO, title=title)
     m = await ctx.send(embed=embed)
     color = colors.EMBED_SUCCESS
-    description = ""
+    description = ''
     if "*" in extensions:
         extensions = get_extensions()
     for extension in extensions:
@@ -126,62 +126,6 @@ class Admin:
         This command is automatically run by `update`.
         """
         await reload_extensions(ctx, *extensions.split())
-
-    # @commands.group(aliases=['admin'])
-    # async def admins(self, ctx):
-    #     """Manage bot administrators.
-
-    #     The owner of the bot ({}) and anyone with the server-wide
-    #     "Administrator" role is automatically a bot admin.
-    #     """
-    #     if ctx.invoked_subcommand is None:
-    #         # TODO display command help
-    #         await ctx.send("Subcommands: `add <user>`, `remove <user>`, `list`")
-
-    # async def get_admins_list():
-    #     return = config.get('admins', [])
-
-    # async def save_admins_list():
-    #     get_db('config').save()
-
-    # @admins.command('add', aliases=['+'])
-    # async def add_admin(self, ctx, member: commands.MemberConverter):
-    #     """Add a user as a bot admin."""
-    #     config = get_db('config')
-    #     config['admins'] = config.get('admins', [])
-    #     guild_data = get_guild_data(ctx.guild)
-    #     admin_list = guild_data['admins'] = guild_data.get('admins', [])
-    #     already_admin = member.id in admin_list
-    #     if not already_admin:
-    #         admin_list.append(member.id)
-    #         guilds_data.save()
-    #     await ctx.send(f"{formal_print_user(member)} is {'already' if already_admin else 'now'} an admin.")
-
-    # @admins.command('remove', aliases=['-'])
-    # async def remove_admin(self, ctx, member: commands.MemberConverter):
-    #     """Remove a bot admin."""
-    #     guild_data = get_guild_data(ctx.guild)
-    #     admin_list = guild_data['admins'] = guild_data.get('admins', [])
-    #     already_not_admin = member.id not in admin_list
-    #     if not already_not_admin:
-    #         admin_list.remove(member.id)
-    #         guilds_data.save()
-    #     await ctx.send(f"{formal_print_user(member)} is {'already' if already_not_admin else 'now'} not an admin.")
-
-    # @admins.command('list', aliases=['l', 'ls'])
-    # async def list_admins(self, ctx):
-    #     """List bot admins."""
-    #     guild_data = get_guild_data(ctx.guild)
-    #     admin_list = guild_data['admins'] = guild_data.get('admins', [])
-    #     user_list = map(self.bot.get_user, admin_list)
-    #     user_list = map(lambda u: u.mention, user_list + [self.bot.app_info.owner])
-    #     user_list = sorted(list(user_list))
-    #     await ctx.send(embed=make_embed(
-    #         color=colors.embed_INFO,
-    #         title="Bot administrators",
-    #         description='\n'.join(user_list)
-    #     ))
-    #     await ctx.send("**Current bot admins:**\n" +  + "\n... plus anyone with the server-wide 'Administrator' permission.")
 
 
 def setup(bot):

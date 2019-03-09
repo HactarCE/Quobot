@@ -1,5 +1,4 @@
 import asyncio
-import discord
 import time
 
 from discord.ext import commands
@@ -23,7 +22,7 @@ def get_command_signature(command):
         if params:
             for name, param in command.clean_params.items():
                 if param.default is not param.empty:
-                    if param.default not in (None, ""):
+                    if param.default not in (None, ''):
                         result += f" [{name}={param.default}]"
                     else:
                         result += f" [{name}]"
