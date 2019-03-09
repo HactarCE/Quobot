@@ -2,8 +2,8 @@
 data/token.txt
 
 # Bot instance data
-data/guilds.json
 data/*_log_*.csv
+data/guilds.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
