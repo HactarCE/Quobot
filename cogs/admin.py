@@ -45,7 +45,7 @@ async def reload_extensions(ctx, *extensions):
     ))
 
 
-class Admin:
+class Admin(commands.Cog):
     """Admin-only commands."""
 
     def __init__(self, bot):

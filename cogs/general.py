@@ -33,7 +33,7 @@ def get_command_signature(command):
     return result
 
 
-class General:
+class General(commands.Cog):
     """General-purpose commands."""
 
     def __init__(self, bot):

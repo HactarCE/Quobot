@@ -11,7 +11,7 @@ from nomic.game import get_game
 from utils import make_embed, YES_NO_EMBED_COLORS, YES_NO_HUMAN_RESULT, react_yes_no, is_bot_admin, human_list, MultiplierConverter
 
 
-class Voting:
+class Voting(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
