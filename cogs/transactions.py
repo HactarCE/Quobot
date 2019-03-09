@@ -279,6 +279,7 @@ class Transactions(commands.Cog):
                 await game.transact(transaction)
         await game.wait_delete_if_illegal(m)
 
+    @commands.Cog.listener()
     async def on_message(self, message):
         try:
             if message.author.bot:

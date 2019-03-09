@@ -161,6 +161,7 @@ class Voting(commands.Cog):
         """
         await self._submit_proposal(ctx, content.strip())
 
+    @commands.Cog.listener()
     async def on_message(self, message):
         try:
             if message.author.bot:

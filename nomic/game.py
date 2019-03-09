@@ -52,7 +52,8 @@ class Game:
         return mutget(self.proposals, [str(n)])
 
     async def wait_delete_if_illegal(self, *messages):
-        if messages and self.proposal_channel and messages[0].channel.id in (self.proposal_channel.id, self.transaction_channel.id):
+        if messages and messages[0].channel.id in (self.proposal_channel and self.proposal_channel.id,
+                                                   self.transaction_channel and self.transaction_channel.id):
             await asyncio.sleep(5)
             await messages[0].channel.delete_messages(messages)
 
