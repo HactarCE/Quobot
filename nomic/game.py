@@ -2,6 +2,7 @@ import asyncio
 from datetime import datetime
 
 from discord.ext import commands
+import discord
 
 from constants import colors, emoji
 from utils import mutget, mutset, lazy_mutget, make_embed, format_discord_color
@@ -165,7 +166,7 @@ class Game:
             if not 1 <= start <= self.proposal_count:
                 raise Exception()
         except:
-            raise UserInputError("Bad proposal numbers(s).")
+            raise discord.UserInputError("Bad proposal numbers(s).")
         end = self.proposal_count + 1
         for proposal_num in range(start, end):
             proposal = self.get_proposal(proposal_num)
