@@ -109,7 +109,7 @@ class General(commands.Cog):
             fields = []
             for cog_name in sorted(cog_names):
                 lines = []
-                for command in sorted(self.bot.get_cog_commands(cog_name), key=lambda cmd: cmd.name):
+                for command in sorted(self.bot.get_cog(cog_name).get_commands(), key=lambda cmd: cmd.name):
                     if not command.hidden and (await command.can_run(ctx)):
                         line = f"\N{BULLET} **`{get_command_signature(command)}`**"
                         if command.short_doc:
