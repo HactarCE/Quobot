@@ -319,6 +319,7 @@ class Voting(commands.Cog):
         await ctx.message.add_reaction(emoji.SUCCESS)
         await game.wait_delete_if_illegal(ctx.message)
 
+    @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
         ctx = await self.bot.get_context(await self.bot.get_channel(payload.channel_id).get_message(payload.message_id))
         game = get_game(ctx)

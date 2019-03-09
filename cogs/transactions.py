@@ -115,7 +115,7 @@ class Transactions(commands.Cog):
         game = get_game(ctx)
         currency_name = currency_name.lower()
         aliases = list(map(str.lower, aliases))
-        for s in [name] + aliases:
+        for s in [currency_name] + aliases:
             if game.get_currency(s):
                 raise UserInputError(f"Currency name '{s}' is already used.")
         description = f"Color: #{format_discord_color(color)}"
