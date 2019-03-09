@@ -153,6 +153,11 @@ def human_list(words, oxford_comma=True):
     return ", ".join(words[:-1]) + ("," if oxford_comma else '') + " and " + words[-1]
 
 
+def format_discord_color(color):
+    s = color if isinstance(color, str) else color.value
+    return f'#{hex(s)[2:]:0>6}'
+
+
 def mutget(d, keys, value=None):
     """Returns the value in a nested dictionary, setting anything undefined to
     new dictionaries except for the last one, which is set to the provided

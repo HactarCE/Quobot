@@ -4,12 +4,14 @@ from datetime import datetime
 from discord.ext import commands
 
 from constants import colors, emoji
-from utils import mutget, mutset, lazy_mutget, make_embed
+from utils import mutget, mutset, lazy_mutget, make_embed, format_discord_color
 import database
 import nomic.logging
 
 
 VOTE_TYPES = ('for', 'against', 'abstain')
+
+TIME_FORMAT = 'UTC %H:%M:%S on %Y-%m-%d'
 
 games = {}
 
@@ -49,13 +51,12 @@ class Game:
     def get_proposal(self, n):
         return mutget(self.proposals, [str(n)])
 
-    async def wait_delete_if_propchan(self, *messages):
-        if messages and messages[0].channel.id == self.proposal_channel.id:
+    async def wait_delete_if_illegal(self, *messages):
+        if messages and messages[0].channel.id in (self.proposal_channel.id, self.transaction_channel.id):
             await asyncio.sleep(5)
             await messages[0].channel.delete_messages(messages)
 
     async def submit_proposal(self, ctx, content):
-        """Submit a proposal"""
         self.proposal_count += 1
         m = await self.proposal_channel.send(embed=make_embed(
             color=colors.EMBED_INFO,
@@ -94,7 +95,7 @@ class Game:
         need_to_save = False
         for proposal_num in proposal_nums:
             try:
-                proposal = self.get_proposal(str(proposal_num))
+                proposal = self.get_proposal(proposal_num)
                 try:
                     m = await self.proposal_channel.get_message(int(proposal.get('message')))
                 except:
@@ -136,7 +137,7 @@ class Game:
                     title=f"Proposal #{proposal.get('n')}{pass_fail_text}",
                     description=proposal.get('content'),
                     fields=fields,
-                    footer_text=f"Submitted at {timestamp.strftime('UTC %H:%M:%S on %Y-%m-%d')} by {member.name}#{member.discriminator}"
+                    footer_text=f"Submitted at {timestamp.strftime(TIME_FORMAT)} by {member.name}#{member.discriminator}"
                 )
                 if m is None:
                     m = await self.proposal_channel.send(embed=embed)
@@ -173,7 +174,6 @@ class Game:
                 pass
             proposal['message'] = None
         await self.refresh_proposal(*range(start, end))
-
 
     async def remove_proposal(self, user, *proposal_nums, reason='', m=None):
         if m:
@@ -314,12 +314,142 @@ class Game:
         await self.refresh_proposal(*proposal_nums)
         return (succeeded, failed)
 
+    def get_currency(self, name):
+        name = name.lower()
+        if name in self.currencies:
+            return self.currencies[name]
+        for c in self.currencies.values():
+            if name in c['aliases']:
+                return c
+        return None
+
+    def add_currency(self, name, color, aliases=[]):
+        for s in [name] + aliases:
+            if self.get_currency(s):
+                raise discord.UserInputError(f"The name {s} is already taken by another currency.")
+        self.currencies[name] = {
+            'name': name,
+            'color': format_discord_color(color),
+            'aliases': aliases,
+            'players': {}
+        }
+        self.save()
+
+    def get_transaction(self, n):
+        return self.transactions[n - 1]
+
+    def format_transaction(self, transaction, include_total=False):
+        s = "**"
+        amt = transaction['amount']
+        if amt >= 0:
+            s += "+"
+        s += f"{amt} {transaction['currency_name']}**"
+        s += " to " if amt >= 0 else " from "
+        s += self.guild.get_member(transaction['user_id']).mention
+        if include_total:
+            player_amounts = self.currencies[transaction['currency_name']]['players']
+            player_total = player_amounts.get(str(transaction['user_id']), 0)
+            s += f" (now {player_total})"
+        if transaction.get('reason'):
+            s += f" {transaction.get('reason')}"
+        return s
+
+    async def transact(self, transaction, reason=''):
+        amount        = transaction['amount']
+        currency_name = transaction['currency_name']
+        user_id       = transaction['user_id']
+        user_agent_id = transaction['user_agent_id']
+        timestamp     = datetime.utcnow()
+        currency = self.get_currency(currency_name)
+        user_agent = self.guild.get_member(user_agent_id)
+        mutget(currency, ['players', str(user_id)], 0)
+        currency['players'][str(user_id)] += amount
+        m = await self.transaction_channel.send(embed=make_embed(
+            color=int(currency.get('color')[1:], 16) or colors.EMBED_INFO,
+            description=self.format_transaction(transaction, include_total=True),
+            footer_text=f"Authorized at {timestamp.strftime(TIME_FORMAT)} by {user_agent.name}#{user_agent.discriminator}"
+        ))
+        self.transaction_messages.append(m.id)
+        # self.transactions.append({
+        #     'amount': amount,
+        #     'currency_name': currency_name,
+        #     'agent': user_agent_id,
+        #     'user': user_id,
+        #     'message': None,
+        #     'reason': reason,
+        #     'timestamp': timestamp.timestamp(),
+        # })
+        self.save()
+        nomic.logging.add_to_transaction_log(self.guild,
+            timestamp=timestamp,
+            currency=currency_name,
+            agent_id=user_agent_id,
+            recipient_id=user_id,
+            amt=amount,
+            reason=reason,
+        )
+        # await self.refresh_transaction(len(self.transactions) - 1)
+
+    # async def refresh_transaction(self, *transaction_nums):
+    #     succeeded = []
+    #     failed = []
+    #     need_to_save = False
+    #     for transaction_num in transaction_nums:
+    #         try:
+    #             transaction = self.get_transaction(transaction_num)
+    #             try:
+    #                 m = await self.transaction_channel.get_message(int(transaction.get('message')))
+    #             except:
+    #                 m = None
+    #             user_agent = self.guild.get_member(transaction['agent_id'])
+    #             embed = make_embed(
+    #                 color=self.get_currency(transaction['currency']).get('color') or colors.EMBED_INFO,
+    #                 title=f"Transaction #{transaction_num}",
+    #                 description=self.format_transaction(transaction),
+    #                 footer_text=f"Authorized at {timestamp.strftime(TIME_FORMAT)} by {user_agent.name}#{user_agent.discriminator}"
+    #             )
+    #             if m is None:
+    #                 m = await self.proposal_channel.send(embed=embed)
+    #                 transaction['message'] = m.id
+    #                 need_to_save = True
+    #             else:
+    #                 await m.edit(embed=embed)
+    #             succeeded.append(transaction_num)
+    #         except:
+    #             failed.append(transaction_num)
+    #     if need_to_save:
+    #         self.save()
+    #     return (succeeded, failed)
+
+    # async def repost_transaction(self, *transaction_nums):
+    #     try:
+    #         start = min(map(int, transaction_nums))
+    #         if not 1 <= start <= len(self.transactions):
+    #             raise Exception()
+    #     except:
+    #         raise UserInputError("Bad transaction numbers(s).")
+    #     end = len(self.transactions) + 1
+    #     for transaction_num in range(start, end):
+    #         transaction = self.get_transaction(transaction_num)
+    #         try:
+    #             await (await self.transaction_channel.get_message(transaction['message'])).delete()
+    #         except:
+    #             pass
+    #         transaction['message'] = None
+    #     await self.refresh_transaction(*range(start, end))
+
 
 Game._add_rule_property('allow_abstain_vote', False)
 Game._add_rule_property('allow_change_vote', False)
 Game._add_rule_property('allow_multi_vote', False)
 Game._add_rule_property('proposal_count', 0)
+Game._add_rule_property('proposals', {})
 Game._add_rule_property('proposal_channel', None,
                         getter_func=Game._try_get_channel,
                         setter_func=lambda self, channel: channel.id)
-Game._add_rule_property('proposals', {})
+# Game._add_rule_property('transactions', [])
+Game._add_rule_property('transaction_messages', [])
+Game._add_rule_property('transaction_channel', None,
+                        getter_func=Game._try_get_channel,
+                        setter_func=lambda self, channel: channel.id)
+Game._add_rule_property('currencies', {})

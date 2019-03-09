@@ -73,6 +73,8 @@ class Voting:
         limit -- Number of messages to search (0 = all)
         """
         game = get_game(ctx)
+        if not game.proposal_channel:
+            return
         message_iter = game.proposal_channel.history(limit=limit or None)
         proposal_message_ids = set(p.get('message') for p in game.proposals.values())
         unwanted_messages = message_iter.filter(lambda m: m.id not in proposal_message_ids)
@@ -100,10 +102,10 @@ class Voting:
             description += f"Proposal{'' if len(failed) == 1 else 's'} {human_list(map(str, failed))} failed.\n"
         m = await ctx.send(embed=make_embed(
             color=colors.EMBED_ERROR if failed else colors.EMBED_SUCCESS,
-            title=f"Refreshed proposal messages",
+            title="Refreshed proposal messages",
             description=description
         ))
-        await game.wait_delete_if_propchan(ctx.message, m)
+        await game.wait_delete_if_illegal(ctx.message, m)
 
     @proposal.command('repost')
     @commands.check(is_bot_admin)
@@ -118,7 +120,7 @@ class Voting:
             return
         game = get_game(ctx)
         await game.repost_proposal(*proposal_nums)
-        await game.wait_delete_if_propchan(ctx.message)
+        await game.wait_delete_if_illegal(ctx.message)
 
     async def _submit_proposal(self, ctx, content):
         game = get_game(ctx)
@@ -216,7 +218,7 @@ class Voting:
         #     proposal_nums = list(range(1, game.proposal_count + 1))
         game = get_game(ctx)
         await game.remove_proposal(ctx.author, *proposal_nums, reason=reason, m=m)
-        await game.wait_delete_if_propchan(ctx.message, m)
+        await game.wait_delete_if_illegal(ctx.message, m)
 
     async def _set_proposal_statuses(self, ctx, new_status, proposal_nums, reason=''):
         if not proposal_nums:
@@ -228,7 +230,7 @@ class Voting:
             await ctx.message.add_reaction(emoji.SUCCESS)
         if failed:
             await ctx.message.add_reaction(emoji.FAILURE)
-        await game.wait_delete_if_propchan(ctx.message)
+        await game.wait_delete_if_illegal(ctx.message)
 
     @proposal.command('revote', rest_is_raw=True)
     async def revote_proposal(self, ctx, proposal_nums: commands.Greedy[int], *, reason=''):
@@ -314,7 +316,7 @@ class Voting:
                 reason=reason,
             )
         await ctx.message.add_reaction(emoji.SUCCESS)
-        await game.wait_delete_if_propchan(ctx.message)
+        await game.wait_delete_if_illegal(ctx.message)
 
     async def on_raw_reaction_add(self, payload):
         ctx = await self.bot.get_context(await self.bot.get_channel(payload.channel_id).get_message(payload.message_id))

@@ -76,8 +76,8 @@ def add_to_transaction_log(guild, *,
     """Add an entry to the transaction log.
 
     Transaction log format:
-    <timestamp> <currency>  <agent_id>  <recipien_id>  +<amt>  [reason ...]
-    <timestamp> <currency>  <agent_id>  <recipien_id>  -<amt>  [reason ...]
+    <timestamp> <currency>  <agent_id>  <recipient_id>  +<amt>  [reason ...]
+    <timestamp> <currency>  <agent_id>  <recipient_id>  -<amt>  [reason ...]
     """
     append_to_log(guild, 'transaction', [
         int((timestamp or datetime.utcnow()).timestamp()),

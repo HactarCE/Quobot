@@ -151,7 +151,7 @@ class Bot(commands.Bot):
         elif isinstance(exc, commands.CommandOnCooldown):
             description = "That command is on cooldown."
         else:
-            description = "Sorry, something went wrong.\n\nA team of highly trained monkeys has been dispatched to deal with the situation."
+            description = "Sorry, something went wrong. A team of highly trained monkeys has been dispatched to deal with the situation."
             await report_error(ctx, exc.original, *args, **kwargs)
         await ctx.send(embed=make_embed(
             color=colors.EMBED_ERROR,
