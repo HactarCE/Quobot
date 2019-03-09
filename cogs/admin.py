@@ -36,7 +36,7 @@ async def reload_extensions(ctx, *extensions):
             description += f"Failed to load `{extension}`.\n"
             _, exc, _ = sys.exc_info()
             if not isinstance(exc, ImportError):
-                await report_error(ctx.bot, ctx, exc, *extensions)
+                await report_error(ctx, exc, *extensions)
     description += "Done."
     await m.edit(embed=make_embed(
         color=color,
