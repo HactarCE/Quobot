@@ -81,47 +81,6 @@ class Transactions:
         unwanted_messages = message_iter.filter(lambda m: m.id not in transaction_message_ids)
         await game.transaction_channel.delete_messages(await unwanted_messages.flatten())
 
-    # @currency.command('refresh')
-    # async def refresh_transaction(self, ctx, *transaction_nums: int):
-    #     """Refresh one or more transaction messages.
-
-    #     This is mostly useful for fixing minor glitches.
-    #     """
-    #     if not transaction_nums:
-    #         await invoke_command_help(ctx)
-    #         return
-    #     game = get_game(ctx)
-    #     succeeded, failed = await game.refresh_transaction(*transaction_nums)
-    #     description = ''
-    #     if succeeded:
-    #         if len(succeeded) == 1:
-    #             description += f"Transaction {succeeded[0]} succeessfully refreshed.\n"
-    #         else:
-    #             description += f"{len(succeeded)}/{len(transaction_nums)} transaction messages succeessfully refreshed.\n"
-    #     if failed:
-    #         description += f"Transaction{'' if len(failed) == 1 else 's'} {human_list(map(str, failed))} failed.\n"
-    #     m = await ctx.send(embed=make_embed(
-    #         color=colors.EMBED_ERROR if failed else colors.EMBED_SUCCESS,
-    #         title="Refreshed transaction messages",
-    #         description=description
-    #     ))
-    #     await game.wait_delete_if_illegal(ctx.message, m)
-
-    # @currency.command('repost')
-    # @commands.check(is_bot_admin)
-    # async def repost_transaction(self, ctx, *transaction_nums: int):
-    #     """Repost one or more transaction messages (and all subsequent ones).
-
-    #     This command may repost potentially hundreds of messages, depending on
-    #     how many transactions there are. USE IT WISELY.
-    #     """
-    #     if not transaction_nums:
-    #         await invoke_command_help(ctx)
-    #         return
-    #     game = get_game(ctx)
-    #     await game.repost_transaction(*transaction_nums)
-    #     await game.wait_delete_if_illegal(ctx.message)
-
     @currency.command('list')
     async def list_currencies(self, ctx, user: discord.Member = None):
         game = get_game(ctx)

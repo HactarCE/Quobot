@@ -370,15 +370,6 @@ class Game:
             footer_text=f"Authorized at {timestamp.strftime(TIME_FORMAT)} by {user_agent.name}#{user_agent.discriminator}"
         ))
         self.transaction_messages.append(m.id)
-        # self.transactions.append({
-        #     'amount': amount,
-        #     'currency_name': currency_name,
-        #     'agent': user_agent_id,
-        #     'user': user_id,
-        #     'message': None,
-        #     'reason': reason,
-        #     'timestamp': timestamp.timestamp(),
-        # })
         self.save()
         nomic.logging.add_to_transaction_log(self.guild,
             timestamp=timestamp,
@@ -388,55 +379,6 @@ class Game:
             amt=amount,
             reason=reason,
         )
-        # await self.refresh_transaction(len(self.transactions) - 1)
-
-    # async def refresh_transaction(self, *transaction_nums):
-    #     succeeded = []
-    #     failed = []
-    #     need_to_save = False
-    #     for transaction_num in transaction_nums:
-    #         try:
-    #             transaction = self.get_transaction(transaction_num)
-    #             try:
-    #                 m = await self.transaction_channel.get_message(int(transaction.get('message')))
-    #             except:
-    #                 m = None
-    #             user_agent = self.guild.get_member(transaction['agent_id'])
-    #             embed = make_embed(
-    #                 color=self.get_currency(transaction['currency']).get('color') or colors.EMBED_INFO,
-    #                 title=f"Transaction #{transaction_num}",
-    #                 description=self.format_transaction(transaction),
-    #                 footer_text=f"Authorized at {timestamp.strftime(TIME_FORMAT)} by {user_agent.name}#{user_agent.discriminator}"
-    #             )
-    #             if m is None:
-    #                 m = await self.proposal_channel.send(embed=embed)
-    #                 transaction['message'] = m.id
-    #                 need_to_save = True
-    #             else:
-    #                 await m.edit(embed=embed)
-    #             succeeded.append(transaction_num)
-    #         except:
-    #             failed.append(transaction_num)
-    #     if need_to_save:
-    #         self.save()
-    #     return (succeeded, failed)
-
-    # async def repost_transaction(self, *transaction_nums):
-    #     try:
-    #         start = min(map(int, transaction_nums))
-    #         if not 1 <= start <= len(self.transactions):
-    #             raise Exception()
-    #     except:
-    #         raise UserInputError("Bad transaction numbers(s).")
-    #     end = len(self.transactions) + 1
-    #     for transaction_num in range(start, end):
-    #         transaction = self.get_transaction(transaction_num)
-    #         try:
-    #             await (await self.transaction_channel.get_message(transaction['message'])).delete()
-    #         except:
-    #             pass
-    #         transaction['message'] = None
-    #     await self.refresh_transaction(*range(start, end))
 
 
 Game._add_rule_property('allow_abstain_vote', False)
@@ -447,7 +389,6 @@ Game._add_rule_property('proposals', {})
 Game._add_rule_property('proposal_channel', None,
                         getter_func=Game._try_get_channel,
                         setter_func=lambda self, channel: channel.id)
-# Game._add_rule_property('transactions', [])
 Game._add_rule_property('transaction_messages', [])
 Game._add_rule_property('transaction_channel', None,
                         getter_func=Game._try_get_channel,
