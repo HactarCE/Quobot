@@ -23,16 +23,21 @@ class ActivePlayers(commands.Cog):
     def last_seen_diff(self, ctx, user):
         this_hour = get_hourly_timestamp()
         last_seen_hour = get_game(ctx).player_last_seen.get(str(user.id))
-        return last_seen_hour is not None and (this_hour - last_seen_hour)
+        if last_seen_hour is None:
+            return None
+        return this_hour - last_seen_hour
 
     def is_active(self, ctx, user):
         last_seen_diff = self.last_seen_diff(ctx, user)
-        return last_seen_diff is not None and last_seen_diff <= get_game(ctx).active_cutoff
+        if last_seen_diff is None:
+            return None
+        return last_seen_diff <= get_game(ctx).active_cutoff
 
     def update_last_seen(self, ctx, user):
         if self.last_seen_diff(ctx, user) != 0:
             game = get_game(ctx)
             game.player_last_seen[str(user.id)] = get_hourly_timestamp()
+            print('woah wait')
             game.save()
 
     @commands.Cog.listener()
