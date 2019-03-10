@@ -397,3 +397,4 @@ Game._add_rule_property('transaction_channel', None,
                         getter_func=Game._try_get_channel,
                         setter_func=lambda self, channel: channel.id)
 Game._add_rule_property('currencies', {})
+Game._add_rule_property('player_last_seen', {})

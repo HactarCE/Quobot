@@ -12,6 +12,8 @@ from utils import make_embed, YES_NO_EMBED_COLORS, YES_NO_HUMAN_RESULT, react_ye
 
 
 class Transactions(commands.Cog):
+    """Commands pertaining to currencies and transactions."""
+
     def __init__(self, bot):
         self.bot = bot
 

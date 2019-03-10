@@ -144,6 +144,24 @@ async def invoke_command(ctx, command_name_to_invoke, *args, **kwargs):
     await ctx.invoke(ctx.bot.get_command(command_name_to_invoke), *args, **kwargs)
 
 
+def format_time_interval(timestamp1, timestamp2, include_seconds=True):
+    dt = int(abs(timestamp1 - timestamp2))
+    dt, seconds = dt // 60, dt % 60
+    dt, minutes = dt // 60, dt % 60
+    dt, hours   = dt // 24, dt % 24
+    days        = dt
+    s = ''
+    if days:
+        s += f'{days}d'
+    if days or hours:
+        s += f'{hours}h'
+    if days or hours or minutes or not include_seconds:
+        s += f'{minutes}m'
+    if include_seconds:
+        s += f'{seconds}s'
+    return s
+
+
 def human_list(words, oxford_comma=True):
     words = list(words)
     if len(words) == 0:

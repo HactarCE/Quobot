@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 import asyncio
 
@@ -8,10 +9,12 @@ from cogs.general import invoke_command_help
 from constants import colors, emoji
 from nomic import command_templates
 from nomic.game import get_game
-from utils import make_embed, YES_NO_EMBED_COLORS, YES_NO_HUMAN_RESULT, react_yes_no, is_bot_admin, human_list, MultiplierConverter
+from utils import make_embed, YES_NO_EMBED_COLORS, YES_NO_HUMAN_RESULT, react_yes_no, is_bot_admin, format_time_interval, human_list, MultiplierConverter
 
 
 class Voting(commands.Cog):
+    """Commands pertaining to proposals and voting."""
+
     def __init__(self, bot):
         self.bot = bot
 
@@ -330,6 +333,33 @@ class Voting(commands.Cog):
                     )
                 except:
                     await ctx.message.remove_reaction(payload.emoji, ctx.guild.get_member(payload.user_id))
+
+    @proposal.command('age')
+    async def proposal_age(self, ctx, *proposal_nums: int):
+        """View the age of proposals, to determine whether they are ready to be
+        tallied.
+
+        If no argument is specified, all open proposals will be selected.
+        """
+        game = get_game(ctx)
+        description = ''
+        if not proposal_nums:
+            proposal_nums = (n for n, p in game.proposals.items() if p['status'] == 'voting')
+        proposal_nums = sorted(proposal_nums)
+        if not proposal_nums:
+            raise commands.UserInputError("There are no open proposals. Please specify at least one proposal number.")
+        for proposal_num in proposal_nums:
+            age = format_time_interval(
+                int(game.get_proposal(proposal_num)['timestamp']),
+                datetime.utcnow().timestamp(),
+                include_seconds=False
+            )
+            description += f"**Proposal #{proposal_num}** proposed **{age}** ago\n"
+        await ctx.send(embed=make_embed(
+            color=colors.EMBED_INFO,
+            title="Proposal age" + ("s" if len(proposal_nums) > 1 else ""),
+            description=description
+        ))
 
 
 def setup(bot):
