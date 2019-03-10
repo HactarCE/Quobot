@@ -117,7 +117,7 @@ class Transactions(commands.Cog):
         aliases = list(map(str.lower, aliases))
         for s in [currency_name] + aliases:
             if game.get_currency(s):
-                raise discord.UserInputError(f"Currency name '{s}' is already used.")
+                raise commands.UserInputError(f"Currency name '{s}' is already used.")
         description = f"Color: #{format_discord_color(color)}"
         description += "\nAliases: " + ", ".join(f"`{a}`" for a in aliases)
         await ctx.send(embed=make_embed(
@@ -239,7 +239,7 @@ class Transactions(commands.Cog):
                     currency_name = game.get_currency(word)['name']
             elif isinstance(word, discord.Member):
                 if not multiplier and amount and currency_name:
-                    raise discord.UserInputError(f"Not sure what to do with {word.mention}. (Specify amount and currency.)")
+                    raise commands.UserInputError(f"Not sure what to do with {word.mention}. (Specify amount and currency.)")
                 # "+10 points to"    ->  +
                 # "-10 points to"    ->  -
                 # "+10 points from"  ->  -
@@ -253,7 +253,7 @@ class Transactions(commands.Cog):
                     'user_id': word.id
                 })
         if not transactions:
-            raise discord.UserInputError("No users specified.")
+            raise commands.UserInputError("No users specified.")
         if len(transactions) == 1:
             human_count = "transaction"
         else:

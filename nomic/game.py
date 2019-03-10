@@ -5,7 +5,7 @@ from discord.ext import commands
 import discord
 
 from constants import colors, emoji
-from utils import mutget, mutset, lazy_mutget, make_embed, format_discord_color
+from utils import mutget, mutset, lazy_mutget, make_embed, format_discord_color, member_sort_key
 import database
 import nomic.logging
 
@@ -50,7 +50,11 @@ class Game:
             return None
 
     def get_proposal(self, n):
-        return mutget(self.proposals, [str(n)])
+        proposal = self.proposals.get(str(n))
+        if proposal:
+            return proposal
+        else:
+            raise commands.UserInputError(f"Proposal #{n} does not exist.")
 
     async def wait_delete_if_illegal(self, *messages):
         if messages and messages[0].channel.id in (self.proposal_channel and self.proposal_channel.id,
@@ -96,7 +100,7 @@ class Game:
         failed = []
         need_to_save = False
         for proposal_num in proposal_nums:
-            try:
+            # try:
                 proposal = self.get_proposal(proposal_num)
                 try:
                     m = await self.proposal_channel.get_message(int(proposal.get('message')))
@@ -107,7 +111,7 @@ class Game:
                     votes = mutget(proposal, ['votes', vote_type])
                     vote_lines = []
                     total_vote_count = 0
-                    for user_id in sorted(votes.keys()):
+                    for user_id in sorted(votes.keys(), key=member_sort_key(self.guild)):
                         vote_count = votes.get(user_id)
                         if vote_count:
                             member = self.guild.get_member(int(user_id))
@@ -154,8 +158,8 @@ class Game:
                     if self.allow_abstain_vote:
                         await m.add_reaction(emoji.VOTE_ABSTAIN)
                 succeeded.append(proposal_num)
-            except:
-                failed.append(proposal_num)
+            # except:
+            #     failed.append(proposal_num)
         if need_to_save:
             self.save()
         return (succeeded, failed)
@@ -166,7 +170,7 @@ class Game:
             if not 1 <= start <= self.proposal_count:
                 raise Exception()
         except:
-            raise discord.UserInputError("Bad proposal numbers(s).")
+            raise commands.UserInputError("Bad proposal numbers(s).")
         end = self.proposal_count + 1
         for proposal_num in range(start, end):
             proposal = self.get_proposal(proposal_num)
@@ -189,20 +193,19 @@ class Game:
         number_sequence = list(range(1, self.proposal_count + 1))
         for proposal_num in proposal_nums:
             proposal = self.get_proposal(proposal_num)
-            if proposal:
-                del self.proposals[str(proposal_num)]
-                number_sequence.remove(proposal_num)
-                nomic.logging.add_to_proposal_log(self.guild,
-                    event_name='remove_proposal',
-                    user_id=user.id,
-                    proposal_number=proposal_num,
-                    reason=reason,
-                )
-                try:
-                    message = await self.proposal_channel.get_message(proposal.get('message'))
-                    await message.delete()
-                except:
-                    pass
+            del self.proposals[str(proposal_num)]
+            number_sequence.remove(proposal_num)
+            nomic.logging.add_to_proposal_log(self.guild,
+                event_name='remove_proposal',
+                user_id=user.id,
+                proposal_number=proposal_num,
+                reason=reason,
+            )
+            try:
+                message = await self.proposal_channel.get_message(proposal.get('message'))
+                await message.delete()
+            except:
+                pass
         self.proposal_count = len(number_sequence)
         if number_sequence:
             if m:
@@ -256,8 +259,6 @@ class Game:
         if vote_type == 'abstain' and not self.get_allow_abstain:
             raise commands.UserInputError("Abstaining is not allowed.")
         proposal = self.get_proposal(proposal_num)
-        if not proposal:
-            raise commands.UserInputError("Proposal does not exist.")
         if proposal.get('status') != 'voting':
             raise commands.UserInputError("Voting is closed for this proposal.")
         votes = proposal.get('votes')
@@ -328,7 +329,7 @@ class Game:
     def add_currency(self, name, color, aliases=[]):
         for s in [name] + aliases:
             if self.get_currency(s):
-                raise discord.UserInputError(f"The name {s} is already taken by another currency.")
+                raise commands.UserInputError(f"The name {s} is already taken by another currency.")
         self.currencies[name] = {
             'name': name,
             'color': format_discord_color(color),

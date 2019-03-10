@@ -226,3 +226,9 @@ class MultiplierConverter(commands.Converter):
                 return int(s)
         except:
             raise discord.CommandError("Unable to convert to multiplier")
+
+
+def member_sort_key(guild):
+    def _key(user_id):
+        return guild.get_member(int(user_id)).name
+    return _key

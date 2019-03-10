@@ -99,7 +99,7 @@ class Voting(commands.Cog):
             else:
                 description += f"{len(succeeded)}/{len(proposal_nums)} proposal messages succeessfully refreshed.\n"
         if failed:
-            description += f"Proposal{'' if len(failed) == 1 else 's'} {human_list(map(str, failed))} failed.\n"
+            description += f"Proposal{'' if len(failed) == 1 else 's'} {human_list(map(str, failed))} could not be refreshed.\n"
         m = await ctx.send(embed=make_embed(
             color=colors.EMBED_ERROR if failed else colors.EMBED_SUCCESS,
             title="Refreshed proposal messages",
@@ -191,35 +191,23 @@ class Voting(commands.Cog):
             await invoke_command_help(ctx)
             return
         game = get_game(ctx)
+        for n in proposal_nums: game.get_proposal(n) # Make sure they exist.
         proposal_amount = 'ALL' if proposal_nums == 'all' else len(proposal_nums)
         proposal_pluralized = f"proposal{'s' * (len(proposal_nums) != 1)}"
-        for i in range(1 + (game.proposal_count >= 10)):
-            description = [
-                "Are you sure? This cannot be undone.",
-                "No seriously, this is permanent. Are you sure about this?"
-            ][i]
-            embed = make_embed(
-                color=colors.EMBED_ASK,
-                title=f"Remove {proposal_amount} {proposal_pluralized}?",
-                description=description
-            )
-            if i == 0:
-                m = await ctx.send(embed=embed)
-            else:
-                await m.clear_reactions()
-                await m.edit(embed=embed)
-            response = await react_yes_no(ctx, m)
-            if response != 'y':
-                await m.edit(embed=make_embed(
-                    color=YES_NO_EMBED_COLORS[response],
-                    title=f"Proposal removal {YES_NO_HUMAN_RESULT[response]}"
-                ))
-                return
-        # if proposal_nums == 'all':
-        #     proposal_nums = list(range(1, game.proposal_count + 1))
-        game = get_game(ctx)
-        await game.remove_proposal(ctx.author, *proposal_nums, reason=reason, m=m)
-        await game.wait_delete_if_illegal(ctx.message, m)
+        m = await ctx.send(embed=make_embed(
+            color=colors.EMBED_ASK,
+            title=f"Remove {proposal_amount} {proposal_pluralized}?",
+            description="Are you sure? This cannot be undone."
+        ))
+        response = await react_yes_no(ctx, m)
+        await m.edit(embed=make_embed(
+            color=YES_NO_EMBED_COLORS[response],
+            title=f"Proposal removal {YES_NO_HUMAN_RESULT[response]}"
+        ))
+        if response == 'y':
+            game = get_game(ctx)
+            await game.remove_proposal(ctx.author, *proposal_nums, reason=reason, m=m)
+            await game.wait_delete_if_illegal(ctx.message, m)
 
     async def _set_proposal_statuses(self, ctx, new_status, proposal_nums, reason=''):
         if not proposal_nums:

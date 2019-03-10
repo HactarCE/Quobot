@@ -77,7 +77,7 @@ class Bot(commands.Bot):
 
     async def on_resumed(self):
         l.info("Resumed session.")
-        await self.change_presence(status=discord.status.online)
+        await self.change_presence(status=discord.Status.online)
 
     async def load_all_extensions(self, reload=False):
         """
