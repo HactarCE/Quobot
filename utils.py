@@ -230,5 +230,8 @@ class MultiplierConverter(commands.Converter):
 
 def member_sort_key(guild):
     def _key(user_id):
-        return guild.get_member(int(user_id)).name
+        try:
+            return guild.get_member(int(user_id)).display_name.lower()
+        except:
+            return user_id
     return _key
