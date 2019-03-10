@@ -16,3 +16,7 @@ pip install --user .
 
 3. Create a file `data/token.txt` containing the bot token.
 4. Run `python3 main.py` to start the bot.
+
+## TODO
+
+* active player tracking

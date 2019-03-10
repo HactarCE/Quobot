@@ -282,8 +282,8 @@ class Voting(commands.Cog):
         if amount is None:
             amount = 1
         user = user or ctx.author
-        if user.id != self.bot.user.id and not await is_bot_admin(ctx):
-            raise commands.MissingPermissions("You aren't allowed to change others' votes.")
+        if user.id != ctx.author.id and not await is_bot_admin(ctx):
+            raise commands.MissingPermissions(["You aren't allowed to change others' votes."])
         if vote_type in ('for', '+'):
             vote_type = 'for'
         elif vote_type in ('against', '-'):
