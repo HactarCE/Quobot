@@ -83,7 +83,7 @@ class Voting(commands.Cog):
         unwanted_messages = message_iter.filter(lambda m: m.id not in proposal_message_ids)
         await game.proposal_channel.delete_messages(await unwanted_messages.flatten())
 
-    @proposal.command('refresh')
+    @proposal.command('refresh', aliases=['rf'])
     async def refresh_proposal(self, ctx, *proposal_nums: int):
         """Refresh one or more proposal messages.
 
@@ -110,7 +110,7 @@ class Voting(commands.Cog):
         ))
         await game.wait_delete_if_illegal(ctx.message, m)
 
-    @proposal.command('repost')
+    @proposal.command('repost', aliases=['rp'])
     @commands.check(is_bot_admin)
     async def repost_proposal(self, ctx, *proposal_nums: int):
         """Repost one or more proposal messages (and all subsequent ones).

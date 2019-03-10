@@ -37,7 +37,6 @@ class ActivePlayers(commands.Cog):
         if self.last_seen_diff(ctx, user) != 0:
             game = get_game(ctx)
             game.player_last_seen[str(user.id)] = get_hourly_timestamp()
-            print('woah wait')
             game.save()
 
     @commands.Cog.listener()

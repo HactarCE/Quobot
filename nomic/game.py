@@ -118,7 +118,8 @@ class Game:
                             if member:
                                 line = member.mention
                                 if vote_count != 1:
-                                    line += f" ({vote_count}x)"
+                                    line += f" **{vote_count}x**"
+                                line += f" _({member.display_name})_"
                                 vote_lines.append(line)
                                 total_vote_count += vote_count
                     field_name = vote_type.capitalize()
