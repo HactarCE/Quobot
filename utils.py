@@ -144,7 +144,7 @@ async def invoke_command(ctx, command_name_to_invoke, *args, **kwargs):
     await ctx.invoke(ctx.bot.get_command(command_name_to_invoke), *args, **kwargs)
 
 
-def format_time_interval(timestamp1, timestamp2, include_seconds=True):
+def format_time_interval(timestamp1, timestamp2=0, *, include_seconds=True):
     dt = int(abs(timestamp1 - timestamp2))
     dt, seconds = dt // 60, dt % 60
     dt, minutes = dt // 60, dt % 60
@@ -159,6 +159,16 @@ def format_time_interval(timestamp1, timestamp2, include_seconds=True):
         s += f'{minutes}m'
     if include_seconds:
         s += f'{seconds}s'
+    return s
+
+def format_hour_interval(hourstamp1, hourstamp2=0):
+    dt = int(abs(hourstamp1 - hourstamp2))
+    dt, hours = dt // 24, dt % 24
+    days      = dt
+    s = ''
+    if days:
+        s += f'{days}d'
+    s += f'{hours}h'
     return s
 
 
@@ -247,9 +257,12 @@ class MultiplierConverter(commands.Converter):
 
 
 def member_sort_key(guild):
-    def _key(user_id):
-        try:
-            return guild.get_member(int(user_id)).display_name.lower()
-        except:
-            return user_id
+    def _key(user):
+        try: return guild.get_member(int(user)).display_name.lower()
+        except: pass
+        try: return user.display_name.lower()
+        except: pass
+        try: return user.lower()
+        except: pass
+        return user
     return _key

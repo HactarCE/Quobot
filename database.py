@@ -1,6 +1,7 @@
 import json
 from os import path, remove, rename
 from tempfile import mkstemp
+from datetime import datetime
 
 from utils import l, LOG_SEP
 
@@ -21,7 +22,8 @@ def load_data(filename):
         l.info(f"Loaded data file {filename}")
         return data
     except:
-        l.warning(f"There was an error loading {filename}; assuming empty dictionary")
+        l.warning(f"There was an error loading {filename}; backing up file and assuming empty dictionary")
+        rename(filename, f'{filename}.{int(datetime.now().timestamp())}.bak')
         return {}
 
 

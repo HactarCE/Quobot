@@ -398,3 +398,4 @@ Game._add_rule_property('transaction_channel', None,
                         setter_func=lambda self, channel: channel.id)
 Game._add_rule_property('currencies', {})
 Game._add_rule_property('player_last_seen', {})
+Game._add_rule_property('active_cutoff', 24 * 7)
