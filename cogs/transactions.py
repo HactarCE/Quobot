@@ -101,7 +101,7 @@ class Transactions(commands.Cog):
                         description += "; " + ", ".join(c['aliases'])
                     description += ")\n"
                 else:
-                    description += f"\N{EN DASH} {c['players'].get(str(user.id), 0)}"
+                    description += f"\N{EN DASH} {c['players'].get(str(user.id), 0)}\n"
         else:
             description = "There are no defined currencies."
         await ctx.send(embed=make_embed(
