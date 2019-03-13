@@ -8,7 +8,7 @@ from cogs.general import invoke_command_help
 from constants import colors, emoji
 from nomic import command_templates
 from nomic.game import get_game
-from utils import make_embed, YES_NO_EMBED_COLORS, YES_NO_HUMAN_RESULT, react_yes_no, is_bot_admin, invoke_command, format_discord_color
+from utils import make_embed, YES_NO_EMBED_COLORS, YES_NO_HUMAN_RESULT, react_yes_no, is_bot_admin, invoke_command, format_discord_color, isfinite
 
 
 class Transactions(commands.Cog):
@@ -239,7 +239,7 @@ class Transactions(commands.Cog):
                     reason.append(word)
                 elif currency_name is None and game.get_currency(word):
                     currency_name = game.get_currency(word)['name']
-            elif isinstance(word, discord.Member):
+            if isinstance(word, discord.Member):
                 if not multiplier and amount and currency_name:
                     raise commands.UserInputError(f"Not sure what to do with {word.mention}. (Specify amount and currency.)")
                 # "+10 points to"    ->  +
@@ -248,6 +248,10 @@ class Transactions(commands.Cog):
                 # "-10 points from"  ->  -
                 if multiplier < 0 and amount < 0:
                     multiplier = +1
+                if currency_name is None:
+                    raise commands.UserInputError("No valid currency specified. Use `!currency list` to view them all.")
+                if not isfinite(amount):
+                    raise commands.UserInputError(f"`{amount}` is not a valid amount. Nice try.")
                 transactions.append({
                     'amount': amount * multiplier,
                     'currency_name': currency_name,

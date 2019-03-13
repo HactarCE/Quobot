@@ -266,3 +266,20 @@ def member_sort_key(guild):
         except: pass
         return user
     return _key
+
+
+INFINITY = float('inf')
+
+isnan = lambda value: value != value
+isinf = lambda value: abs(value) == INFINITY
+isfinite = lambda value: not (isnan(value) or isinf(value))
+
+def dedupe(l):
+    """Remove duplicates from list. MUTATES ORIGINAL"""
+    seen = set()
+    for i in range(l):
+        if l[i] in seen:
+            del l[i]
+        else:
+            seen.add(l[i])
+    return l
