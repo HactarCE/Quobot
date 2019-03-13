@@ -60,6 +60,12 @@ class Bot(commands.Bot):
         self.cogs_loaded = set()
         self.config = kwargs.pop('config')
 
+    async def ready_status(self):
+        await self.change_presence(
+            status=discord.Status.online,
+            activity=discord.Game(name="Quonauts")
+        )
+
     async def on_connect(self):
         l.info(f"Connected as {self.user}.")
         await self.change_presence(status=discord.Status.idle)
@@ -73,11 +79,11 @@ class Bot(commands.Bot):
         l.info(f"Template Maker: SourSpoon / Spoon#7805")
         l.info(LOG_SEP)
         await self.load_all_extensions()
-        await self.change_presence(status=discord.Status.online)
+        await self.ready_status()
 
     async def on_resumed(self):
         l.info("Resumed session.")
-        await self.change_presence(status=discord.Status.online)
+        await self.ready_status()
 
     async def load_all_extensions(self, reload=False):
         """
