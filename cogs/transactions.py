@@ -90,7 +90,7 @@ class Transactions(commands.Cog):
         if user is None:
             title = "Currency list"
         else:
-            title = "Currency list for " + user.mention
+            title = f"Currency list for {user.display_name}#{user.discriminator}"
         if currencies:
             description = ''
             for c in currencies.values():
@@ -101,7 +101,7 @@ class Transactions(commands.Cog):
                         description += "; " + ", ".join(c['aliases'])
                     description += ")\n"
                 else:
-                    description += f"\N{EM DASH} {c['players'].get(str(user.id), 0)}"
+                    description += f"\N{EN DASH} {c['players'].get(str(user.id), 0)}"
         else:
             description = "There are no defined currencies."
         await ctx.send(embed=make_embed(
@@ -120,9 +120,9 @@ class Transactions(commands.Cog):
         for s in [currency_name] + aliases:
             if game.get_currency(s):
                 raise commands.UserInputError(f"Currency name '{s}' is already used.")
-        description = f"Color: #{format_discord_color(color)}"
-        description += "\nAliases: " + ", ".join(f"`{a}`" for a in aliases)
-        await ctx.send(embed=make_embed(
+        description = f"Color: {format_discord_color(color)}"
+        description += "\nAliases: " + (", ".join(f"`{a}`" for a in aliases) or "(none)")
+        m = await ctx.send(embed=make_embed(
             color=colors.EMBED_ASK,
             title=f"Create currency '{currency_name}'?",
             description=description
@@ -181,7 +181,7 @@ class Transactions(commands.Cog):
         game.save()
         await ctx.message.add_reaction(emoji.SUCCESS)
 
-    @commands.command('transact', aliases=['give', 't', 'take'])
+    @commands.command('transaction', aliases=['give', 't', 'take', 'transact'])
     async def transact(self, ctx, *transaction: Union[discord.Member, float, str]):
         """Make a transaction.
 
@@ -316,7 +316,6 @@ class Transactions(commands.Cog):
                     await game.wait_delete_if_illegal(m)
         except:
             pass
-
 
 
 def setup(bot):
