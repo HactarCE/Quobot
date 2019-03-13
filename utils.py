@@ -275,11 +275,11 @@ isinf = lambda value: abs(value) == INFINITY
 isfinite = lambda value: not (isnan(value) or isinf(value))
 
 def dedupe(l):
-    """Remove duplicates from list. MUTATES ORIGINAL"""
+    """Return a list containing elements of l in order, but without duplicates."""
+    new = []
     seen = set()
-    for i in range(l):
-        if l[i] in seen:
-            del l[i]
-        else:
-            seen.add(l[i])
-    return l
+    for elem in l:
+        if elem not in seen:
+            new.append(elem)
+            seen.add(elem)
+    return new

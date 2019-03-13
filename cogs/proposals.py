@@ -9,7 +9,7 @@ from cogs.general import invoke_command_help
 from constants import colors, emoji
 from nomic import command_templates
 from nomic.game import get_game
-from utils import make_embed, YES_NO_EMBED_COLORS, YES_NO_HUMAN_RESULT, react_yes_no, is_bot_admin, format_time_interval, human_list, MultiplierConverter
+from utils import make_embed, YES_NO_EMBED_COLORS, YES_NO_HUMAN_RESULT, react_yes_no, is_bot_admin, format_time_interval, human_list, MultiplierConverter, dedupe
 
 
 class Voting(commands.Cog):
@@ -94,6 +94,7 @@ class Voting(commands.Cog):
             await invoke_command_help(ctx)
             return
         game = get_game(ctx)
+        proposal_nums = dedupe(proposal_nums)
         succeeded, failed = await game.refresh_proposal(*proposal_nums)
         description = ''
         if succeeded:
@@ -122,6 +123,7 @@ class Voting(commands.Cog):
             await invoke_command_help(ctx)
             return
         game = get_game(ctx)
+        proposal_nums = dedupe(proposal_nums)
         await game.repost_proposal(*proposal_nums)
         await game.wait_delete_if_illegal(ctx.message)
 
@@ -342,6 +344,7 @@ class Voting(commands.Cog):
         If no argument is specified, all open proposals will be selected.
         """
         game = get_game(ctx)
+        proposal_nums = dedupe(proposal_nums)
         description = ''
         if not proposal_nums:
             proposal_nums = (n for n, p in game.proposals.items() if p['status'] == 'voting')
