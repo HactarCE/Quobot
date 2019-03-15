@@ -271,7 +271,7 @@ class Transactions(commands.Cog):
             description=description
         ))
         response = await react_yes_no(ctx, m)
-        reason = ' '.join(reason)
+        reason = ' '.join(map(str, reason))
         if reason:
             for t in transactions:
                 t['reason'] = reason
