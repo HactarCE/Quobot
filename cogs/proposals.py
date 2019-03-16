@@ -185,9 +185,10 @@ class Voting(commands.Cog):
             pass
 
     @proposal.command('remove', aliases=['del', 'delete', 'rm'], rest_is_raw=True)
-    @commands.check(is_bot_admin)
     async def proposal_remove(self, ctx, proposal_nums: commands.Greedy[int], *, reason):
         """Remove one or more proposals (and renumber subsequent ones accordingly).
+
+        You must be an admin or the owner of a proposal to remove it.
 
         proposal_nums -- A list of proposal numbers to remove
         reason -- Justification for removal (applies to all proposals removed)
@@ -196,7 +197,13 @@ class Voting(commands.Cog):
             await invoke_command_help(ctx)
             return
         game = get_game(ctx)
-        for n in proposal_nums: game.get_proposal(n) # Make sure they exist.
+        for n in proposal_nums:
+            # Make sure proposal exists and make sure that the user has
+            # permission to remove it.
+            if not ((game.get_proposal(n).author == ctx.author.id
+                     and game.get_proposal(n).timestamp < datetime.utcnow().timestamp + 60*60*6)
+                    or is_bot_admin(ctx.author)):
+                raise UserInputError(f"You don't have permission to remove proposal #{n}.")
         proposal_amount = 'ALL' if proposal_nums == 'all' else len(proposal_nums)
         proposal_pluralized = f"proposal{'s' * (len(proposal_nums) != 1)}"
         m = await ctx.send(embed=make_embed(
