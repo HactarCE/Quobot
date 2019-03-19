@@ -1,7 +1,7 @@
-DEV = True
+DEV = False
 
 NAME = "Quobot"
-VERSION = "1.3.5" + ("-dev" * DEV)
+VERSION = "1.3.6" + ("-dev" * DEV)
 
 ABOUT_TEXT = f"""\
 {NAME} is an open source Discord bot created using \
