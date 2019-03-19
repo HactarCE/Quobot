@@ -343,10 +343,10 @@ class Voting(commands.Cog):
                 except:
                     await ctx.message.remove_reaction(payload.emoji, ctx.guild.get_member(payload.user_id))
 
-    @proposal.command('age')
-    async def proposal_age(self, ctx, *proposal_nums: int):
-        """View the age of proposals, to determine whether they are ready to be
-        tallied.
+    @proposal.command('info', aliases=['age', 'i', 'stat', 'stats'])
+    async def proposal_info(self, ctx, *proposal_nums: int):
+        """View information about proposals, such as age, number of for/against
+        votes, and author.
 
         If no argument is specified, all open proposals will be selected.
         """
@@ -359,15 +359,18 @@ class Voting(commands.Cog):
         if not proposal_nums:
             raise commands.UserInputError("There are no open proposals. Please specify at least one proposal number.")
         for proposal_num in proposal_nums:
+            proposal = game.get_proposal(proposal_num)
             age = format_time_interval(
-                int(game.get_proposal(proposal_num)['timestamp']),
+                int(proposal['timestamp']),
                 datetime.utcnow().timestamp(),
                 include_seconds=False
             )
-            description += f"**Proposal #{proposal_num}** proposed **{age}** ago\n"
+            for_votes = sum(proposal['votes']['for'].values())
+            against_votes = sum(proposal['votes']['against'].values())
+            description += f"**#{proposal_num}** - **{age}** old - **{for_votes}** for; **{against_votes}** against\n"
         await ctx.send(embed=make_embed(
             color=colors.EMBED_INFO,
-            title="Proposal age" + ("s" if len(proposal_nums) > 1 else ""),
+            title="Proposal information",
             description=description
         ))
 
