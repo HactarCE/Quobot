@@ -113,7 +113,7 @@ class Transactions(commands.Cog):
                 raise commands.UserInputError(f"No user or currency: {user_or_currency}")
             title = f"Player list for {c['name']}"
             description = ''
-            for user_id in sorted(c['players'].keys(), key=member_sort_key):
+            for user_id in sorted(c['players'].keys(), key=member_sort_key(ctx.guild)):
                 description += f"{ctx.guild.get_member(int(user_id)).mention} has **{c['players'].get(user_id)}**\n"
             if not description:
                 description = "(none)"
