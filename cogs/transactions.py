@@ -8,7 +8,7 @@ from cogs.general import invoke_command_help
 from constants import colors, emoji
 from nomic import command_templates
 from nomic.game import get_game
-from utils import make_embed, YES_NO_EMBED_COLORS, YES_NO_HUMAN_RESULT, react_yes_no, is_bot_admin, invoke_command, format_discord_color, isfinite
+from utils import make_embed, YES_NO_EMBED_COLORS, YES_NO_HUMAN_RESULT, react_yes_no, is_bot_admin, invoke_command, format_discord_color, member_sort_key, isfinite
 
 
 class Transactions(commands.Cog):
@@ -83,27 +83,40 @@ class Transactions(commands.Cog):
         unwanted_messages = message_iter.filter(lambda m: m.id not in transaction_message_ids)
         await game.transaction_channel.delete_messages(await unwanted_messages.flatten())
 
-    @currency.command('list')
-    async def list_currencies(self, ctx, user: discord.Member = None):
+    @currency.command('list', aliases=['l', 'ls'])
+    async def list_currencies(self, ctx, user_or_currency: Union[discord.Member, str]=None):
+        """List player values for a given currency, or currency values for a given player."""
         game = get_game(ctx)
         currencies = game.currencies
-        if user is None:
-            title = "Currency list"
+        if isinstance(user_or_currency, discord.Member) or user_or_currency is None:
+            user = user_or_currency
+            if user is None:
+                title = "Currency list"
+            else:
+                title = f"Currency list for {user.display_name}#{user.discriminator}"
+            if currencies:
+                description = ''
+                for c in currencies.values():
+                    description += f"\N{BULLET} **{c['name'].capitalize()}** "
+                    if user is None:
+                        description += f"(`{c['color']}`"
+                        if c['aliases']:
+                            description += "; " + ", ".join(c['aliases'])
+                        description += ")\n"
+                    else:
+                        description += f"\N{EN DASH} {c['players'].get(str(user.id), 0)}\n"
+            else:
+                description = "There are no defined currencies."
         else:
-            title = f"Currency list for {user.display_name}#{user.discriminator}"
-        if currencies:
+            c = game.get_currency(user_or_currency)
+            if c is None:
+                raise commands.UserInputError(f"No user or currency: {user_or_currency}")
+            title = f"Player list for {c['name']}"
             description = ''
-            for c in currencies.values():
-                description += f"\N{BULLET} **{c['name'].capitalize()}** "
-                if user is None:
-                    description += f"(`{c['color']}`"
-                    if c['aliases']:
-                        description += "; " + ", ".join(c['aliases'])
-                    description += ")\n"
-                else:
-                    description += f"\N{EN DASH} {c['players'].get(str(user.id), 0)}\n"
-        else:
-            description = "There are no defined currencies."
+            for user_id in sorted(c['players'].keys(), key=member_sort_key):
+                description += f"{ctx.guild.get_member(int(user_id)).mention} has **{c['players'].get(user_id)}**\n"
+            if not description:
+                description = "(none)"
         await ctx.send(embed=make_embed(
             color=colors.EMBED_INFO,
             title=title,
