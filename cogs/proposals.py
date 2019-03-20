@@ -374,6 +374,18 @@ class Voting(commands.Cog):
             description=description
         ))
 
+    @proposal.command('link', aliases=['l', 'ln', 'lnk'])
+    async def proposal_link(self, ctx, proposal_num: int):
+        """Get a link to a proposal message."""
+        game = get_game(ctx)
+        message_id = game.get_proposal(proposal_num).get('message', '')
+        url = f'https://discordapp.com/channels/{ctx.guild.id}/{game.proposal_channel.id}/{message_id}'
+        # await ctx.send(embed=make_embed(
+        #     title=f"Proposal #{proposal_num}",
+        #     url=f'https://discordapp.com/channels/{ctx.guild.id}/{game.proposal_channel.id}/{message_id}'
+        # ))
+        await ctx.send(f"**Proposal #{proposal_num}:** _<{url}>_")
+
 
 def setup(bot):
     bot.add_cog(Voting(bot))
