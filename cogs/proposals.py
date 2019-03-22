@@ -360,6 +360,7 @@ class Voting(commands.Cog):
             raise commands.UserInputError("There are no open proposals. Please specify at least one proposal number.")
         for proposal_num in proposal_nums:
             proposal = game.get_proposal(proposal_num)
+            url = f'https://discordapp.com/channels/{ctx.guild.id}/{game.proposal_channel.id}/{proposal.get("message", "")}'
             age = format_time_interval(
                 int(proposal['timestamp']),
                 datetime.utcnow().timestamp(),
@@ -367,24 +368,12 @@ class Voting(commands.Cog):
             )
             for_votes = sum(proposal['votes']['for'].values())
             against_votes = sum(proposal['votes']['against'].values())
-            description += f"**#{proposal_num}** - **{age}** old - **{for_votes}** for; **{against_votes}** against\n"
+            description += f"**[#{proposal_num}]({url})** - **{age}** old - **{for_votes}** for; **{against_votes}** against\n"
         await ctx.send(embed=make_embed(
             color=colors.EMBED_INFO,
             title="Proposal information",
             description=description
         ))
-
-    @proposal.command('link', aliases=['l', 'ln', 'lnk'])
-    async def proposal_link(self, ctx, proposal_num: int):
-        """Get a link to a proposal message."""
-        game = get_game(ctx)
-        message_id = game.get_proposal(proposal_num).get('message', '')
-        url = f'https://discordapp.com/channels/{ctx.guild.id}/{game.proposal_channel.id}/{message_id}'
-        # await ctx.send(embed=make_embed(
-        #     title=f"Proposal #{proposal_num}",
-        #     url=f'https://discordapp.com/channels/{ctx.guild.id}/{game.proposal_channel.id}/{message_id}'
-        # ))
-        await ctx.send(f"**Proposal #{proposal_num}:** _<{url}>_")
 
 
 def setup(bot):
