@@ -200,7 +200,7 @@ class Voting(commands.Cog):
         for n in proposal_nums:
             # Make sure proposal exists and make sure that the user has
             # permission to remove it.
-            if not ((game.get_proposal(n).author == ctx.author.id
+            if not ((game.get_proposal(n)['author'] == ctx.author.id
                      and game.get_proposal(n).timestamp < datetime.utcnow().timestamp + 60*60*6)
                     or is_bot_admin(ctx.author)):
                 raise UserInputError(f"You don't have permission to remove proposal #{n}.")
