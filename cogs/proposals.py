@@ -354,26 +354,39 @@ class Voting(commands.Cog):
         proposal_nums = dedupe(proposal_nums)
         description = ''
         if not proposal_nums:
-            proposal_nums = (n for n, p in game.proposals.items() if p['status'] == 'voting')
+            proposal_nums = (int(n) for n, p in game.proposals.items() if p['status'] == 'voting')
         proposal_nums = sorted(proposal_nums)
         if not proposal_nums:
             raise commands.UserInputError("There are no open proposals. Please specify at least one proposal number.")
-        for proposal_num in proposal_nums:
-            proposal = game.get_proposal(proposal_num)
-            url = f'https://discordapp.com/channels/{ctx.guild.id}/{game.proposal_channel.id}/{proposal.get("message", "")}'
-            age = format_time_interval(
-                int(proposal['timestamp']),
-                datetime.utcnow().timestamp(),
-                include_seconds=False
-            )
-            for_votes = sum(proposal['votes']['for'].values())
-            against_votes = sum(proposal['votes']['against'].values())
-            description += f"**[#{proposal_num}]({url})** - **{age}** old - **{for_votes}** for; **{against_votes}** against\n"
-        await ctx.send(embed=make_embed(
-            color=colors.EMBED_INFO,
-            title="Proposal information",
-            description=description
-        ))
+        async def do_it(include_url):
+            description = '\n'.join(map(lambda m: self.get_proposal_message(ctx, m, include_url), proposal_nums))
+            await ctx.send(embed=make_embed(
+                color=colors.EMBED_INFO,
+                title="Proposal information",
+                description=description
+            ))
+        try:
+            await do_it(True)
+        except discord.HTTPException:
+            await do_it(False)
+
+    def get_proposal_message(self, ctx, proposal_num, include_url=True):
+        game = get_game(ctx)
+        proposal = game.get_proposal(proposal_num)
+        url = f'https://discordapp.com/channels/{ctx.guild.id}/{game.proposal_channel.id}/{proposal.get("message", "")}'
+        age = format_time_interval(
+            int(proposal['timestamp']),
+            datetime.utcnow().timestamp(),
+            include_seconds=False
+        )
+        for_votes = sum(proposal['votes']['for'].values())
+        against_votes = sum(proposal['votes']['against'].values())
+        if include_url:
+            s = f"**[#{proposal_num}]({url})**"
+        else:
+            s = f"**#{proposal_num}**"
+        s += f" - **{age}** old - **{for_votes}** for; **{against_votes}** against"
+        return s
 
 
 def setup(bot):
