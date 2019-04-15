@@ -125,7 +125,7 @@ class Game:
                     if total_vote_count:
                         field_name += f" ({total_vote_count})"
                     fields.append((field_name, '\n'.join(vote_lines) or "(none)", True))
-                if not self.allow_abstain_vote:
+                if not (self.allow_abstain_vote and proposal['votes']['abstain']):
                     del fields[-1]
                 member = self.guild.get_member(proposal.get('author'))
                 status = proposal.get('status')
@@ -256,7 +256,7 @@ class Game:
             raise commands.UserInputError("Invalid vote count.")
         if count > 1 and not self.allow_multi_vote:
             raise commands.UserInputError("Multivoting is not allowed.")
-        if vote_type == 'abstain' and not self.get_allow_abstain:
+        if vote_type == 'abstain' and not self.allow_abstain_vote:
             raise commands.UserInputError("Abstaining is not allowed.")
         proposal = self.get_proposal(proposal_num)
         if proposal.get('status') != 'voting':
