@@ -1,4 +1,4 @@
-DEV = True
+DEV = False
 
 NAME = "Quobot"
 VERSION = "1.4.9" + ("-dev" * DEV)
