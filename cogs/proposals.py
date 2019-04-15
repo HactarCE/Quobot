@@ -381,11 +381,14 @@ class Voting(commands.Cog):
         )
         for_votes = sum(proposal['votes']['for'].values())
         against_votes = sum(proposal['votes']['against'].values())
+        abstain_votes = sum(proposal['votes']['abstain'].values())
         if include_url:
             s = f"**[#{proposal_num}]({url})**"
         else:
             s = f"**#{proposal_num}**"
         s += f" - **{age}** old - **{for_votes}** for; **{against_votes}** against"
+        if abstain_votes:
+            s += f"; **{abstain_votes}** abstain"
         return s
 
 
