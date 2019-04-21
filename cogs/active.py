@@ -94,7 +94,7 @@ class ActivePlayers(commands.Cog):
             description += "\n"
         await ctx.send(embed=make_embed(
             color=colors.EMBED_INFO,
-            title="Active users",
+            title=f"Active users ({len(users)})",
             description=description
         ))
 
