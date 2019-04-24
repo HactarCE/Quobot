@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import asyncio
 import logging
 
 try:
@@ -12,22 +11,8 @@ except ImportError:
 
 from cogs import get_extensions
 from constants import colors, info
-from database import DATA_DIR, get_db, TOKEN_FILE_PATH, get_token
+from database import TOKEN_FILE_PATH, get_token
 from utils import l, LOG_SEP, make_embed, report_error
-
-
-async def run():
-    try:
-        token = get_token()
-    except FileNotFoundError:
-        print(f"Please specify a bot token in {TOKEN_FILE_PATH}.")
-        exit(1)
-    bot = Bot(description=info.DESCRIPTION)
-    try:
-        # bot.loop.create_task(bot.load_all_extensions())
-        await bot.start(token)
-    except KeyboardInterrupt:
-        await bot.logout()
 
 
 LOG_LEVEL_API = logging.WARNING
@@ -56,7 +41,6 @@ class Bot(commands.Bot):
         )
         self.app_info = None
         self.cogs_loaded = set()
-        self.config = kwargs.pop('config')
 
     async def ready_status(self):
         await self.change_presence(
@@ -72,9 +56,8 @@ class Bot(commands.Bot):
         self.app_info = await self.application_info()
         l.info(LOG_SEP)
         l.info(f"Logged in as: {self.user.name}")
-        l.info(f"Using discord.py version: {discord.__version__}")
-        l.info(f"Owner: {self.app_info.owner}")
-        l.info(f"Template Maker: SourSpoon / Spoon#7805")
+        l.info(f"discord.py:   {discord.__version__}")
+        l.info(f"Owner:        {self.app_info.owner}")
         l.info(LOG_SEP)
         await self.load_all_extensions()
         await self.ready_status()
@@ -165,5 +148,10 @@ class Bot(commands.Bot):
 
 
 if __name__ == '__main__':
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(run())
+    try:
+        token = get_token()
+    except FileNotFoundError:
+        print(f"Please specify a bot token in {TOKEN_FILE_PATH}.")
+        exit(1)
+    bot = Bot(description=info.DESCRIPTION)
+    bot.run(token)

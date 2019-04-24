@@ -1,6 +1,3 @@
-import asyncio
-import time
-
 from discord.ext import commands
 from utils import l, make_embed, invoke_command
 from constants import colors, info
@@ -11,12 +8,12 @@ async def invoke_command_help(ctx):
 
 
 def get_command_signature(command):
-    # almost entirely copied from within discord.ext.commands, but ignores aliases
+    # This is almost entirely copied from within discord.ext.commands, but
+    # discord.ext.commands's function ignores aliases.
     result = command.qualified_name
     if command.usage:
         result += " " + command.usage
     elif command.clean_params:
-        # l.warning(f"Command {command.name} has parameters but no 'usage'.")
         result = command.qualified_name
         params = command.clean_params
         if params:
@@ -102,10 +99,12 @@ class General(commands.Cog):
                 ))
         else:
             cog_names = []
-            ungrouped_commands = []
             for command in self.bot.commands:
-                if command.cog_name and command.cog_name not in cog_names:
-                    cog_names.append(command.cog_name)
+                if command.cog_name:
+                    if command.cog_name not in cog_names:
+                        cog_names.append(command.cog_name)
+                else:
+                    l.warning("Command {command.name!r} has no cog, so it will not be listed by the 'help' command")
             fields = []
             for cog_name in sorted(cog_names):
                 lines = []

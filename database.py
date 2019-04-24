@@ -1,9 +1,9 @@
 import json
-from os import mkdirs, path, remove, rename
+from os import makedirs, path, remove, rename
 from tempfile import mkstemp
 from datetime import datetime
 
-from utils import l, LOG_SEP
+from utils import l
 
 
 DATA_DIR = path.join(path.dirname(path.realpath(__file__)), 'data')
@@ -40,7 +40,7 @@ def save_data(filename: str, data: dict) -> None:
     # case of an error.
     fullpath = path.join(DATA_DIR, filename)
     try:
-        mkdirs(path.dirname(fullpath))
+        makedirs(path.dirname(fullpath))
         tempfile, tempfile_path = mkstemp(dir=DATA_DIR)
         with open(tempfile, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent='\t')

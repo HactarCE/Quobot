@@ -7,7 +7,7 @@ DAEMON = CONFIG.get('daemon', False)
 
 NAME = "Quobot"
 with open('VERSION') as f:
-    VERSION = f.read().strip() + (" (non-daemonized)" * (not DAEMON))
+    VERSION = f.read().strip()
 
 DESCRIPTION = "A bot for the Nomic game on the Quonauts Discord server"
 
