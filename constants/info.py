@@ -1,7 +1,15 @@
-DEV = False
+from database import get_db
+
+
+CONFIG = get_db('config')
+
+DAEMON = CONFIG.get('daemon', False)
 
 NAME = "Quobot"
-VERSION = "1.4.10" + ("-dev" * DEV)
+with open('VERSION') as f:
+    VERSION = f.read().strip() + (" (non-daemonized)" * (not DAEMON))
+
+DESCRIPTION = "A bot for the Nomic game on the Quonauts Discord server"
 
 ABOUT_TEXT = f"""\
 {NAME} is an open source Discord bot created using \

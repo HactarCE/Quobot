@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import logging
 import traceback
 
@@ -11,6 +12,17 @@ from constants import colors, emoji, info
 l = logging.getLogger('bot')
 
 LOG_SEP = '-' * 20
+
+
+def now():
+    return int(datetime.utcnow().timestamp())
+
+
+TIME_FORMAT = 'UTC %H:%M:%S on %Y-%m-%d'
+
+
+def fake_mention(user):
+    return f"{user.name}#{user.discriminator}"
 
 
 def make_embed(*, fields=[], footer_text=None, **kwargs):
@@ -96,7 +108,7 @@ async def is_bot_admin(ctx):
 
 
 async def report_error(ctx, exc, *args, **kwargs):
-    if info.DEV:
+    if not info.DAEMON:
         for entry in traceback.format_tb(exc.__traceback__):
             for line in entry.splitlines():
                 l.error(line)
@@ -188,9 +200,14 @@ def format_discord_color(color):
 
 def mutget(d, keys, value=None):
     """Returns the value in a nested dictionary, setting anything undefined to
-    new dictionaries except for the last one, which is set to the provided
-    value if undefined. Like dict.get(), but mutates the original dictionary and can handle
-    nested dictionaries/arrays.
+    new dictionaries except for the last one, which is set to the provided value
+    if undefined. Like dict.get(), but mutates the original dictionary and can
+    handle nested dictionaries/arrays.
+
+    Arguments:
+    - d -- dictionary
+    - keys -- a single key or a list of keys
+    - value (optional) -- default value to use if not present
 
     Examples:
 
@@ -206,6 +223,8 @@ def mutget(d, keys, value=None):
     """
     if not keys:
         return d
+    if not isinstance(keys, list):
+        keys = [keys]
     for key in keys[:-1]:
         if key not in d:
             d[key] = {}
@@ -215,9 +234,9 @@ def mutget(d, keys, value=None):
     return d[keys[-1]]
 
 def mutset(d, keys, value):
-    """Sets the value in a nested dictionary, setting anything undefined to
-    new dictionaries except for the last one, which is set to the provided
-    value. Like mutget(), but always sets the last value.
+    """Sets the value in a nested dictionary, setting anything undefined to new
+    dictionaries except for the last one, which is set to the provided value.
+    Like mutget(), but always sets the last value.
 
     Examples:
 
@@ -256,16 +275,19 @@ class MultiplierConverter(commands.Converter):
             raise discord.CommandError("Unable to convert to multiplier")
 
 
-def member_sort_key(guild):
+def user_sort_key(member_getter):
     def _key(user):
-        try: return guild.get_member(int(user)).display_name.lower()
-        except: pass
-        try: return user.display_name.lower()
-        except: pass
-        try: return user.lower()
-        except: pass
-        return user
+        if isinstance(user, int):
+            user = member_getter.get_member(user)
+        if isinstance(user, discord.User):
+            return user.display_name.lower()
+        else:
+            return user
     return _key
+
+
+def sort_users(user_list, member_getter):
+    return sorted(user_list, key=user_sort_key(member_getter))
 
 
 INFINITY = float('inf')

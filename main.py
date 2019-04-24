@@ -19,12 +19,10 @@ from utils import l, LOG_SEP, make_embed, report_error
 async def run():
     try:
         token = get_token()
-    except:
+    except FileNotFoundError:
         print(f"Please specify a bot token in {TOKEN_FILE_PATH}.")
         exit(1)
-    config = get_db('config')
-    bot = Bot(config=config,
-              description=config.get('description'))
+    bot = Bot(description=info.DESCRIPTION)
     try:
         # bot.loop.create_task(bot.load_all_extensions())
         await bot.start(token)
@@ -37,10 +35,10 @@ LOG_LEVEL_BOT = logging.INFO
 LOG_FMT = "[%(asctime)s] [%(name)s] [%(levelname)s] %(message)s"
 
 
-if info.DEV:
-    logging.basicConfig(format=LOG_FMT)
-else:
+if info.DAEMON:
     logging.basicConfig(format=LOG_FMT, filename='bot.log')
+else:
+    logging.basicConfig(format=LOG_FMT)
 logging.getLogger('discord').setLevel(LOG_LEVEL_API)
 l.setLevel(LOG_LEVEL_BOT)
 
