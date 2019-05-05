@@ -23,8 +23,8 @@ class Rule:
       Rule)
     - children (default []) -- list of strings or list of Rules (converted to
       list of Rules)
-    - message_id (default None) -- discord.Message or the ID of one (converted
-      to integer ID)
+    - message_ids (default []) -- list of discord.Message or IDs (converted to
+      list of integer IDs)
     """
 
     game: object
@@ -33,7 +33,7 @@ class Rule:
     content: str
     parent: Optional[Rule] = 'root'
     children: List[Rule] = []
-    message_id: Optional[int] = None
+    message_ids: List[int] = []
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -43,7 +43,7 @@ class Rule:
             if isinstance(i, str):
                 self.children[i] = self.game.get_rule(v)
 
-    def export(self):
+    def export(self) -> dict:
         d = self._asdict()
         d.update({
             'parent': self.parent and self.parent.tag,
@@ -51,11 +51,12 @@ class Rule:
         })
         return d
 
-    async def fetch_message(self) -> discord.Message:
-        return await self.game.rules_channel.fetch_message(self.message_id)
+    async def fetch_messages(self) -> discord.Message:
+        return [self.game.rules_channel.fetch_message(message_id)
+                async for message_id in self.message_ids]
 
     @property
-    def section_number(self):
+    def section_number(self) -> str:
         parent_rule = self.game.get_rule(self.parent)
         i = parent_rule.children.index(self.tag) + 1
         if self.parent.tag == 'root':
@@ -64,41 +65,68 @@ class Rule:
             return f"{parent_rule.section_number}.{i}"
 
     @property
-    def section_title(self):
+    def section_title(self) -> str:
         return f"{self.section_number} {self.title}"
 
     @property
-    def discord_link(self):
+    def discord_link(self) -> str:
         return 'https://discordapp.com/channels/{self.game.guild.id}/{self.game.rules_channel.id}/{self.message_id}'
 
-    def _link_sub(self, format_string):
+    def _link_sub(self, format_string: str, content: str = None) -> str:
+        """Replace rule tag links with Markdown links of a given format.
+
+        Arguments:
+        - format_string -- str; format string taking a keyword argument `rule`
+        - content -- str; content in which to replace links
+        """
         def replace_func(match):
             rule = self.game.get_rule(match.group(1))
             if rule is None:
                 return match.group()
             else:
                 return format_string.format(rule=rule)
-        return re.sub(r'\[(#[a-z\-]+)\]', replace_func, self.content)
+        if content is None:
+            content = self.content
+        return re.sub(r'\[(#[a-z\-]+)\]', replace_func, content)
+
+    def discord_link_sub(self, paragraph):
+        s = self._link_sub('[**{rule.section_title}**]({rule.discord_link})', paragraph)
+        if len(s) < 2000:
+            return s
+        s = self._link_sub('**{rule.section_title}**', paragraph)
+        if len(s) < 2000:
+            return s
+        s = paragraph
+        if len(s) < 2000:
+            return s
+        end = " ... <truncated to 2000 chars>"
+        return s[:(2000 - len(end))] + end
 
     @property
-    def discord_content(self):
-        s = self._link_sub('[**{rule.section_title}**]({rule.discord_link})')
-        if len(s) < 2048:
-            return s
-        s = self._link_sub('**{rule.section_title}**')
-        if len(s) < 2048:
-            return s
-        return self.content
+    def discord_content(self) -> List[str]:
+        paragraphs = map(self.discord_link_sub, self.content.splitlines())
+        chunks = ['']
+        for paragraph in paragraphs:
+            if len(chunks[-1]) + len(paragraph) >= 2000:
+                chunks.append('')
+            chunks[-1] += paragraph
+        return chunks
 
     @property
-    def embed(self):
-        if self.tag != 'root':
-            return utils.make_embed(
+    def embeds(self) -> List[discord.Embed]:
+        if self.tag == 'root':
+            return []
+        chunks = self.discord_content
+        embeds = []
+        for i, chunk in enumerate(chunks):
+            title = self.title
+            if len(chunks) > 1:
+                title += f" ({i}/{len(chunks)})"
+            embeds.append(discord.Embed(
                 color=colors.INFO,
-                title=self.title,
-                description=self.discord_content,
-                footer_text=self.tag
-            )
+                title=title,
+                description=chunk,
+            ).set_footer(self.tag))
 
     @classmethod
     def get_root(cls, game: object) -> Rule:

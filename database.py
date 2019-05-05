@@ -8,13 +8,6 @@ from utils import l
 
 DATA_DIR = path.join(path.dirname(path.realpath(__file__)), 'data')
 
-TOKEN_FILE_PATH = path.join(DATA_DIR, 'token.txt')
-
-
-def get_token() -> str:
-    with open(TOKEN_FILE_PATH, 'r') as f:
-        return f.read().strip()
-
 
 def load_data(filename: str) -> dict:
     fullpath = path.join(DATA_DIR, filename)
@@ -61,24 +54,32 @@ class DB(dict):
     """A simple subclass of dict implementing JSON save/load.
 
     Do not instantiate this class directly; use database.get_db() instead.
+
+    Read-only attributes:
+    - name -- str
+    - filepath -- str
     """
 
     def __init__(self, db_name: str, do_not_instantiate_directly: None):
         """Do not instantiate this class directly; use database.get_db()
         instead.
         """
-        self.filename = path.join(DATA_DIR, db_name + '.json')
+        if do_not_instantiate_directly != 'ok':
+            # I'm not sure whether TypeError is really the best choice here.
+            raise TypeError("Do not instantiate DB object directly; use get_db() instead")
+        self.name = db_name
+        self.filepath = path.join(DATA_DIR, db_name + '.json')
         self.reload()
 
     def reload(self) -> None:
         self.clear()
-        self.update(load_data(self.filename))
+        self.update(load_data(self.filepath))
 
     def save(self) -> None:
-        save_data(self.filename, self)
+        save_data(self.filepath, self)
 
 
 def get_db(db_name: str) -> DB:
     if db_name not in _DATABASES:
-        _DATABASES[db_name] = DB(db_name, None)
+        _DATABASES[db_name] = DB(db_name, 'ok')
     return _DATABASES[db_name]

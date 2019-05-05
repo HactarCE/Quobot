@@ -24,15 +24,24 @@ GREYPLE         = 0x99AAB5
 DARK            = 0x2C2F33
 NOT_QUITE_BLACK = 0x23272A
 
-EMBED_NONE      = 0x4F545C
+NONE            = 0x4F545C
 
-EMBED_ASK       = CYAN
-EMBED_CONFIRM   = SOFT_GREEN
-EMBED_CANCEL    = SOFT_RED
-EMBED_TIMEOUT   = EMBED_NONE
+ASK             = CYAN
+CONFIRM         = SOFT_GREEN
+CANCEL          = SOFT_RED
+TIMEOUT         = NONE
 
-EMBED_INFO      = BLURPLE
-EMBED_HELP      = PURPLE
-EMBED_ERROR     = RED
-EMBED_SUCCESS   = GREEN
-EMBED_LINK      = SOFT_BLUE
+DELETED         = NONE
+TEMPORARY       = NONE
+
+INFO            = BLURPLE
+HELP            = PURPLE
+ERROR           = RED
+SUCCESS         = GREEN
+LINK            = SOFT_BLUE
+
+YESNO           = {
+    'y': CONFIRM,
+    'n': CANCEL,
+    't': TIMEOUT,
+}

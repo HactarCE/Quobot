@@ -10,9 +10,9 @@ except ImportError:
     exit(1)
 
 from cogs import get_extensions
-from constants import colors, info
-from database import TOKEN_FILE_PATH, get_token
-from utils import l, LOG_SEP, make_embed, report_error
+from constants import info
+from utils import l, LOG_SEP
+from utils.error_handling import on_command_error
 
 
 LOG_LEVEL_API = logging.WARNING
@@ -28,13 +28,10 @@ logging.getLogger('discord').setLevel(LOG_LEVEL_API)
 l.setLevel(LOG_LEVEL_BOT)
 
 
-COMMAND_PREFIX = '!'
-
-
 class Bot(commands.Bot):
     def __init__(self, **kwargs):
         super().__init__(
-            command_prefix=commands.when_mentioned_or(COMMAND_PREFIX),
+            command_prefix=info.COMMAND_PREFIX,
             case_insensitive=True,
             description=kwargs.pop('description'),
             status=discord.Status.dnd
@@ -67,10 +64,10 @@ class Bot(commands.Bot):
         await self.ready_status()
 
     async def load_all_extensions(self, reload=False):
-        """
-        Attempts to load all .py files in cogs/ as cog extensions. Returns a
-        dictionary which maps cog names to a boolean value (True = successfully
-        loaded; False = not successfully loaded).
+        """Attempt to load all .py files in cogs/ as cog extensions.
+
+        Return a dictionary which maps cog names to a boolean value (True =
+        successfully loaded; False = not successfully loaded).
         """
         succeeded = {}
         for extension in get_extensions():
@@ -97,61 +94,20 @@ class Bot(commands.Bot):
         l.info(f"Joined {guild.name} with {guild.member_count} users!")
 
     async def on_message(self, message):
-        """This event triggers on every message received by the bot. Including ones that it sent itself."""
+        """This event triggers on every message received by the bot, including
+        ones that it sent itself.
+        """
         if message.author.bot:
-            return # Ignore all bots.
+            return  # Ignore all bots.
         await self.process_commands(message)
 
-    async def on_command_error(self, ctx, exc, *args, **kwargs):
-        command_name = ctx.command.qualified_name if ctx.command else "unknown command"
-        l.error(f"'{str(exc)}' encountered while executing '{command_name}' (args: {args}; kwargs: {kwargs})")
-        if isinstance(exc, commands.UserInputError):
-            if isinstance(exc, commands.MissingRequiredArgument):
-                description = f"Missing required argument `{exc.param.name}`."
-            elif isinstance(exc, commands.TooManyArguments):
-                description = "Too many arguments."
-            elif isinstance(exc, commands.BadArgument):
-                description = f"Bad argument:\n```\n{str(exc)}\n```"
-            elif exc.args:
-                description = exc.args[0]
-            else:
-                description = "Bad user input."
-            description += f"\n\nRun `{COMMAND_PREFIX}help {command_name}` to view the required arguments."
-        elif isinstance(exc, commands.CommandNotFound):
-            # description = f"Could not find command `{ctx.invoked_with.split()[0]}`."
-            return
-        elif isinstance(exc, commands.CheckFailure):
-            if isinstance(exc, commands.NoPrivateMessage):
-                description = "Cannot be run in a private message channel."
-            elif isinstance(exc, commands.MissingPermissions) or isinstance(exc, commands.BotMissingPermissions):
-                if isinstance(exc, commands.MissingPermissions):
-                    description = "You don't have permission to do that."
-                elif isinstance(exc, commands.BotMissingPermissions):
-                    description = "I don't have permission to do that."
-                missing_perms = "\n".join(exc.missing_perms)
-                description += f" Missing:\n```\n{missing_perms}\n```"
-            else:
-                # description = "Command check failed."
-                return
-        elif isinstance(exc, commands.DisabledCommand):
-            description = "That command is disabled."
-        elif isinstance(exc, commands.CommandOnCooldown):
-            description = "That command is on cooldown."
-        else:
-            description = "Sorry, something went wrong. A team of highly trained monkeys has been dispatched to deal with the situation."
-            await report_error(ctx, exc.original, *args, **kwargs)
-        await ctx.send(embed=make_embed(
-            color=colors.EMBED_ERROR,
-            title="Error",
-            description=description
-        ))
+    async def on_command_error(self, exc, *args, **kwargs):
+        await on_command_error(exc, *args, **kwargs)
 
 
 if __name__ == '__main__':
-    try:
-        token = get_token()
-    except FileNotFoundError:
-        print(f"Please specify a bot token in {TOKEN_FILE_PATH}.")
+    if info.TOKEN is None:
+        print(f"Please specify a bot token in {info.CONFIG.filepath}.")
         exit(1)
     bot = Bot(description=info.DESCRIPTION)
-    bot.run(token)
+    bot.run(info.TOKEN)

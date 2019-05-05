@@ -4,7 +4,7 @@ import re
 
 from constants import colors, emoji
 from database import get_db
-from utils import l, make_embed, mutget
+from utils import l, mutget
 from .gameflags import GameFlags
 from .proposal import Proposal
 from .quantity import Quantity
@@ -176,8 +176,8 @@ class Game:
                 pass
         await self.proposals_channel.delete_messages(*proposal_messages)
         for n, proposal in zip(proposal_range, proposals):
-            m = await self.proposals_channel.send(embed=make_embed(
-                color=colors.EMBED_NONE,
+            m = await self.proposals_channel.send(embed=discord.Embed(
+                color=colors.TEMPORARY,
                 title=f"Preparing proposal #{n}\N{HORIZONTAL ELLIPSIS}",
             ))
             proposal.message_id = m.id

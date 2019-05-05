@@ -76,7 +76,7 @@ class Proposal:
             self.title += self.status.value.capitalize()
         if self.status == ProposalStatus.DELETED:
             return utils.make_embed(
-                color=colors.EMBED_NONE,
+                color=colors.DELETED,
                 title=title,
             )
         # Make an embed field for each type of vote
@@ -106,9 +106,9 @@ class Proposal:
         footer = f"Submitted at {timestamp_str} by {self.author.name}#{self.author.discriminator}"
         return utils.make_embed(
             color={
-                ProposalStatus.VOTING: colors.EMBED_INFO,
-                ProposalStatus.PASSED: colors.EMBED_SUCCESS,
-                ProposalStatus.FAILED: colors.EMBED_ERROR,
+                ProposalStatus.VOTING: colors.INFO,
+                ProposalStatus.PASSED: colors.SUCCESS,
+                ProposalStatus.FAILED: colors.ERROR,
             }[self.status],
             title=title,
             description=self.content,

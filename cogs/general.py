@@ -1,5 +1,8 @@
 from discord.ext import commands
-from utils import l, make_embed, invoke_command
+import discord
+
+from utils import l
+from utils.discord import invoke_command
 from constants import colors, info
 
 
@@ -55,20 +58,36 @@ class General(commands.Cog):
         if command_name:
             command = self.bot.get_command(command_name)
             if command is None:
-                await ctx.send(embed=make_embed(
-                    color=colors.EMBED_ERROR,
+                await ctx.send(embed=discord.Embed(
+                    color=colors.ERROR,
                     title="Command help",
                     description=f"Could not find command `{command_name}`.",
                 ))
             elif await command.can_run(ctx):
-                fields = []
+                embed = discord.Embed(
+                    color=colors.HELP,
+                    title="Command help",
+                    description=f"`{command.name}`",
+                )
+
                 if command.usage or command.clean_params:
-                    fields.append(("Synopsis", f"`{get_command_signature(command)}`", True))
+                    embed.add_field(
+                        name="Synopsis",
+                        value=f"`{get_command_signature(command)}`",
+                        inline=True,
+                    )
                 if command.aliases:
                     aliases = ', '.join(f"`{alias}`" for alias in command.aliases)
-                    fields.append(("Aliases", aliases, True))
+                    embed.add_field(
+                        name="Aliases",
+                        value=aliases,
+                        inline=True,
+                    )
                 if command.help:
-                    fields.append(("Description", command.help))
+                    embed.add_field(
+                        name="Description",
+                        value=command.help,
+                    )
                 if hasattr(command, 'commands'):
                     subcommands = []
                     for subcommand in command.commands:
@@ -77,23 +96,24 @@ class General(commands.Cog):
                             s += f" \N{EM DASH} {subcommand.short_doc}"
                         subcommands.append(s)
                     subcommands.sort()
-                    fields.append(("Subcommands", "\n".join(subcommands)))
+                    embed.add_field(
+                        name="Subcommands",
+                        value="\n".join(subcommands),
+                    )
                 misc = ''
                 if not command.enabled:
                     misc += "This command is currently disabled.\n"
                 if command.hidden:
                     misc += "This command is usually hidden.\n"
                 if misc:
-                    fields.append(("Miscellaneous", misc))
-                await ctx.send(embed=make_embed(
-                    color=colors.EMBED_HELP,
-                    title="Command help",
-                    description=f"`{command.name}`",
-                    fields=fields,
-                ))
+                    embed.add_field(
+                        name="Miscellaneous",
+                        value=misc
+                    )
+                await ctx.send(embed=embed)
             else:
-                await ctx.send(embed=make_embed(
-                    color=colors.EMBED_ERROR,
+                await ctx.send(embed=discord.Embed(
+                    color=colors.ERROR,
                     title="Command help",
                     description=f"You have insufficient permission to access `{command_name}`.",
                 ))
@@ -105,7 +125,11 @@ class General(commands.Cog):
                         cog_names.append(command.cog_name)
                 else:
                     l.warning("Command {command.name!r} has no cog, so it will not be listed by the 'help' command")
-            fields = []
+            embed = discord.Embed(
+                color=colors.HELP,
+                title="Command list",
+                description=f"Invoke a command by prefixing it with `{prefix}`. Use `{prefix}{ctx.command.name} [command]` to get help on a specific command.",
+            )
             for cog_name in sorted(cog_names):
                 lines = []
                 for command in sorted(self.bot.get_cog(cog_name).get_commands(), key=lambda cmd: cmd.name):
@@ -115,29 +139,27 @@ class General(commands.Cog):
                             line += f" \N{EM DASH} {command.short_doc}"
                         lines.append(line)
                 if lines:
-                    fields.append((cog_name, "\n".join(lines)))
-            mention = ctx.me.mention
-            await ctx.send(embed=make_embed(
-                color=colors.EMBED_HELP,
-                title="Command list",
-                description=f"Invoke a command by prefixing it with `{prefix}` or {mention}. Use `{prefix}{ctx.command.name} [command]` to get help on a specific command.",
-                fields=fields,
-            ))
+                    embed.add_field(name=cog_name, value="\n".join(lines))
+            await ctx.send(embed=embed)
 
     @commands.command(aliases=['i', 'info'])
     async def about(self, ctx):
         """Display information about the bot."""
         await ctx.send(
-            embed=make_embed(
-                color=colors.EMBED_INFO,
+            embed=discord.Embed(
+                color=colors.INFO,
                 title=f"About {info.NAME}",
                 description=info.ABOUT_TEXT,
-                fields=[
-                    ("Author", f"[{info.AUTHOR}]({info.AUTHOR_LINK})", True),
-                    ("GitHub Repository", info.GITHUB_LINK, True),
-                ],
                 footer_text=f"{info.NAME} v{info.VERSION}",
-            )
+            ).add_field(
+                name="Author",
+                value=f"[{info.AUTHOR}]({info.AUTHOR_LINK})",
+                inline=True,
+            ).add_field(
+                name="GitHub Repository",
+                value=info.GITHUB_LINK,
+                inline=True,
+            ).set_footer(f"{info.NAME} v{info.VERSION}")
         )
 
 

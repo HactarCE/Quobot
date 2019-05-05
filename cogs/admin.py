@@ -1,44 +1,43 @@
-import asyncio
-import io
-import os
-import sys
-import traceback
+from discord.ext import commands
 from subprocess import PIPE
+import asyncio
+import discord
+import sys
 
 from . import get_extensions
-from discord.ext import commands
-
-from constants import colors
-from database import get_db
-from utils import l, make_embed, YES_NO_EMBED_COLORS, YES_NO_HUMAN_RESULT, react_yes_no, is_bot_admin, report_error
+from constants import colors, strings
+from utils import l
+import utils
 
 
 async def reload_extensions(ctx, *extensions):
     if '*' in extensions:
         title = "Reloading all extensions"
-    elif len(extensions) > 1:
-        title = "Reloading extensions"
-    else:
+    elif len(extensions) == 1:
         title = f"Reloading `{extensions[0]}`"
-    embed = make_embed(color=colors.EMBED_INFO, title=title)
+    else:
+        title = "Reloading extensions"
+    embed = discord.Embed(
+        color=colors.INFO,
+        title=title
+    )
     m = await ctx.send(embed=embed)
-    color = colors.EMBED_SUCCESS
+    color = colors.SUCCESS
     description = ''
-    if "*" in extensions:
+    if '*' in extensions:
         extensions = get_extensions()
     for extension in extensions:
         ctx.bot.unload_extension('cogs.' + extension)
         try:
             ctx.bot.load_extension('cogs.' + extension)
             description += f"Successfully loaded `{extension}`.\n"
-        except:
-            color = colors.EMBED_ERROR
+        except (commands.ExtensionError, ImportError) as exc:
+            color = colors.ERROR
             description += f"Failed to load `{extension}`.\n"
-            _, exc, _ = sys.exc_info()
             if not isinstance(exc, ImportError):
-                await report_error(ctx, exc, *extensions)
+                raise
     description += "Done."
-    await m.edit(embed=make_embed(
+    await m.edit(embed=discord.Embed(
         color=color,
         title=title.replace("ing", "ed"),
         description=description
@@ -50,7 +49,7 @@ class Admin(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.__local_check = is_bot_admin
+        self.__local_check = utils.discord.is_admin
 
     @commands.command(aliases=['die', 'q', 'quit'])
     async def shutdown(self, ctx):
@@ -72,21 +71,25 @@ class Admin(commands.Cog):
         if noconfirm:
             response = 'y'
         else:
-            m = await ctx.send(embed=make_embed(
-                color=colors.EMBED_ASK,
+            m = await ctx.send(embed=discord.Embed(
+                color=colors.ASK,
                 title="Shutdown?",
                 description="This action may be difficult to undo without phsyical or remote access to the host machine. Are you sure?",
             ))
-            response = await react_yes_no(ctx, m)
+            response = await utils.discord.get_confirm(ctx, m)
         if response == 'y':
             title = "Shutting down\N{HORIZONTAL ELLIPSIS}"
         else:
-            title = f"Shutdown {YES_NO_HUMAN_RESULT[response]}"
-        await (ctx.send if noconfirm else m.edit)(embed=make_embed(
-            color=colors.EMBED_INFO if noconfirm else YES_NO_EMBED_COLORS[response],
+            title = f"Shutdown {strings.YESNO[response]}"
+        if noconfirm:
+            color = colors.INFO
+        else:
+            color = colors.YESNO[response]
+        await (ctx.send if noconfirm else m.edit)(embed=discord.Embed(
+            color=color,
             title=title
         ))
-        if response is 'y':
+        if response == 'y':
             l.info(f"Shutting down at the command of {ctx.author.display_name}...")
             await self.bot.logout()
 
@@ -94,12 +97,14 @@ class Admin(commands.Cog):
     async def update(self, ctx):
         """Run `git pull` to update the bot."""
         subproc = await asyncio.create_subprocess_exec('git', 'pull', stdout=PIPE)
-        embed = make_embed(color=colors.EMBED_INFO, title="Running `git pull`")
+        embed = discord.Embed(
+            color=colors.INFO,
+            title="Running `git pull`"
+        )
         m = await ctx.send(embed=embed)
         returncode = await subproc.wait()
-        embed.color = colors.EMBED_ERROR if returncode else colors.EMBED_SUCCESS
+        embed.color = colors.ERROR if returncode else colors.SUCCESS
         stdout, stderr = await subproc.communicate()
-        fields = []
         if stdout:
             embed.add_field(
                 name="Stdout",
@@ -115,7 +120,7 @@ class Admin(commands.Cog):
         if not (stdout or stderr):
             embed.description = "`git pull` completed."
         await m.edit(embed=embed)
-        await self.reload_(ctx, "*")
+        await utils.discord.invoke_command(ctx, 'reload *')
 
     @commands.command(aliases=['r'])
     async def reload(self, ctx, *, extensions: str = '*'):

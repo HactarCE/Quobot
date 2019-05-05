@@ -4,6 +4,8 @@ from database import get_db
 CONFIG = get_db('config')
 
 DAEMON = CONFIG.get('daemon', False)
+TOKEN = CONFIG.get('token')
+COMMAND_PREFIX = CONFIG.get('prefix', '!')
 
 NAME = "Quobot"
 with open('VERSION') as f:
