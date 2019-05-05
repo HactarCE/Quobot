@@ -85,3 +85,12 @@ async def is_admin(ctx):
 
 async def invoke_command(ctx, command_name_to_invoke, *args, **kwargs):
     await ctx.invoke(ctx.bot.get_command(command_name_to_invoke), *args, **kwargs)
+
+
+def sort_users(user_list):
+    def key(user):
+        if isinstance(user, discord.User):
+            return user.display_name.lower()
+        else:
+            return user
+    return sorted(user_list, key=key)

@@ -33,7 +33,8 @@ def save_data(filename: str, data: dict) -> None:
     # case of an error.
     fullpath = path.join(DATA_DIR, filename)
     try:
-        makedirs(path.dirname(fullpath))
+        if not path.isdir(path.dirname(fullpath)):
+            makedirs(path.dirname(fullpath))
         tempfile, tempfile_path = mkstemp(dir=DATA_DIR)
         with open(tempfile, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent='\t')
@@ -45,9 +46,6 @@ def save_data(filename: str, data: dict) -> None:
             remove(tempfile_path)
         except Exception:
             pass
-
-
-_DATABASES = {}
 
 
 class DB(dict):
@@ -77,6 +75,9 @@ class DB(dict):
 
     def save(self) -> None:
         save_data(self.filepath, self)
+
+
+_DATABASES = {}
 
 
 def get_db(db_name: str) -> DB:

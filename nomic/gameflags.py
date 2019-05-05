@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 
 @dataclass
@@ -8,7 +8,7 @@ class GameFlags:
     allow_vote_abstain: bool = False
     allow_vote_change: bool = True
     allow_vote_multi: bool = False
-    player_activity_cutoff: int = 24 * 60 * 60
+    player_activity_cutoff: int = 24
 
     def export(self) -> dict:
-        return self._asdict()
+        return asdict(self)

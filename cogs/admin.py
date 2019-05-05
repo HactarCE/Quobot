@@ -2,7 +2,6 @@ from discord.ext import commands
 from subprocess import PIPE
 import asyncio
 import discord
-import sys
 
 from . import get_extensions
 from constants import colors, strings
@@ -27,7 +26,10 @@ async def reload_extensions(ctx, *extensions):
     if '*' in extensions:
         extensions = get_extensions()
     for extension in extensions:
-        ctx.bot.unload_extension('cogs.' + extension)
+        try:
+            ctx.bot.unload_extension('cogs.' + extension)
+        except commands.ExtensionNotLoaded:
+            pass
         try:
             ctx.bot.load_extension('cogs.' + extension)
             description += f"Successfully loaded `{extension}`.\n"
@@ -109,13 +111,13 @@ class Admin(commands.Cog):
             embed.add_field(
                 name="Stdout",
                 value=f"```\n{stdout.decode('utf-8')}\n```",
-                inline=False
+                inline=False,
             )
         if stderr:
             embed.add_field(
                 name="Stderr",
                 value=f"```\n{stderr.decode('utf-8')}\n```",
-                inline=False
+                inline=False,
             )
         if not (stdout or stderr):
             embed.description = "`git pull` completed."

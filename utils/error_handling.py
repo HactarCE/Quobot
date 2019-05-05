@@ -78,17 +78,17 @@ async def log_error(ctx, exc, *args, **kwargs):
             embed.add_field(
                 name="Guild",
                 value=guild_name,
+                inline=False,
             ).add_field(
                 name="Channel",
                 value=channel_name,
+                inline=False,
             ).add_field(
                 name="User",
                 value=f"{user} (A.K.A. {user.display_name})",
-                inline=True,
             ).add_field(
-                name="Message Content",
+                name="Message content",
                 value=f"{ctx.message.content}",
-                inline=True,
             )
         else:
             fields = []
@@ -101,13 +101,12 @@ async def log_error(ctx, exc, *args, **kwargs):
         embed.add_field(
             name="Args",
             value=f"```\n{repr(args)}\n```" if args else "None",
-            inline=True,
         ).add_field(
-            name="Keyword Args",
+            name="Keyword args",
             value=f"```\n{repr(kwargs)}\n```" if kwargs else "None",
-            inline=True,
         ).add_field(
             name="Traceback",
             value=tb,
+            inline=False,
         )
         await ctx.bot.app_info.owner.send(embed=embed)

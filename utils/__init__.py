@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime
 import logging
 
 import discord
@@ -35,10 +35,8 @@ def format_time_interval(timestamp1, timestamp2=0, *, include_seconds=True):
     return s
 
 
-def format_hour_interval(hourstamp1, hourstamp2=0):
-    dt = int(abs(hourstamp1 - hourstamp2))
-    dt, hours = dt // 24, dt % 24
-    days      = dt
+def format_hours(hours):
+    days, hours = hours // 24, hours % 24
     s = ''
     if days:
         s += f'{days}d'
@@ -137,21 +135,6 @@ class MultiplierConverter(commands.Converter):
                 return int(s)
         except ValueError:
             raise discord.CommandError("Unable to convert to multiplier")
-
-
-def user_sort_key(member_getter):
-    def _key(user):
-        if isinstance(user, int):
-            user = member_getter.get_member(user)
-        if isinstance(user, discord.User):
-            return user.display_name.lower()
-        else:
-            return user
-    return _key
-
-
-def sort_users(user_list, member_getter):
-    return sorted(user_list, key=user_sort_key(member_getter))
 
 
 INFINITY = float('inf')

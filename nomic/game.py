@@ -1,3 +1,5 @@
+from discord.ext import commands
+from typing import Dict, Union
 import asyncio
 import discord
 import re
@@ -9,65 +11,70 @@ from .gameflags import GameFlags
 from .proposal import Proposal
 from .quantity import Quantity
 from .rule import Rule
-
-
-_GAMES = {}
+import utils
 
 
 class Game:
-    """A Nomic game, including proposals, rules, etc."""
+    """A Nomic game, including proposals, rules, etc.
 
-    def __new__(cls, guild: discord.Guild):
-        if guild.id in _GAMES:
-            return _GAMES[guild.id]
-        else:
-            game = super().__new__(cls, guild)
-            _GAMES[guild.id] = game
-            return game
+    Do not instantiate this class directly; use game.get_game() instead.
+    """
 
-    def __init__(self, guild: discord.Guild):
+    def __init__(self, guild: discord.Guild, do_not_instantiate_directly: None):
+        """Do not instantiate this class directly; use game.get_game() instead.
+        """
+        if do_not_instantiate_directly != 'ok':
+            # I'm not sure whether TypeError is really the best choice here.
+            raise TypeError("Do not instantiate DB object directly; use get_db() instead")
         self.lock = asyncio.Lock()
         self.guild = guild
         self.db = get_db('guild_' + str(guild.id))
         self.flags = GameFlags(**self.db.get('flags', {}))
-        self.proposals = [Proposal(**p) for p in mutget(self.db, 'proposals', [])]
+        self.proposals = [Proposal(game=self, **p) for p in mutget(self.db, 'proposals', [])]
         self.quantities = {k: Quantity(**q) for k, q in mutget(self.db, 'quantities', {})}
         self.rules = {}
-        self._load_rule(mutget(self.db, 'rules', {'root': Rule.get_root(self)}), 'root')
+        self._load_rule(mutget(self.db, 'rules', {
+            'root': {'tag': 'root', 'title': None, 'content': None},
+        }), 'root')
+        self.player_activity = mutget(self.db, 'last_activity', {})
         channels = mutget(self.db, 'channels', {})
         self.proposals_channel  = guild.get_channel(channels.get('proposals'))
         self.quantities_channel = guild.get_channel(channels.get('quantities'))
         self.rules_channel      = guild.get_channel(channels.get('rules'))
 
-    def _load_rule(self, rules_dict, tag):
+    def _load_rule(self, rules_dict: Dict[str, Dict], tag: str) -> None:
         if tag not in rules_dict:
             l.warning(f"No such rule found: {tag!r}")
             return
         if tag in self.rules:
             l.warning(f"Rule recursion or repetition found: {tag!r} is a child of multiple rules")
             return
-        rule = Rule(**rules_dict[tag])
-        if rule not in rule.parent.children:
-            l.warning(f"Rule section inconsistency found; {tag!r} is not a child of its parent, {rule.parent.tag!r}")
-            return
+        rule = Rule(game=self, **rules_dict[tag])
+        if rule.tag != 'root':
+            if rule.parent is None:
+                l.warning(f"Rule section inconsistency found; {tag!r} is not root but has no parent")
+            if rule not in rule.parent.children:
+                l.warning(f"Rule section inconsistency found; {tag!r} is not a child of its parent, {rule.parent.tag!r}")
+                return
         self.rules[tag] = rule
         for child in rule.children:
             self._load_rule(rules_dict, child)
 
     async def save(self) -> None:
         async with self.lock:
-            self.save()
+            self._save()
 
     def _save(self) -> None:
+        self.db.clear()
         self.db.update(self.export())
         self.db.save()
 
     def export(self) -> dict:
         return {
             'channels': {
-                'proposals': self.proposals_channel.id,
-                'quantities': self.quantities_channel.id,
-                'rules': self.rules_channel.id,
+                'proposals': self.proposals_channel and self.proposals_channel.id,
+                'quantities': self.quantities_channel and self.quantities_channel.id,
+                'rules': self.rules_channel and self.rules_channel.id,
             },
             'flags': self.flags.export(),
             'proposals': [p.export() for p in self.proposals],
@@ -75,11 +82,20 @@ class Game:
             'rules': {k: r.export() for k, r in self.rules.items()},
         }
 
-    def get_member(self, user_id) -> discord.User:
+    def get_member(self, user_id: int) -> discord.User:
         if isinstance(user_id, discord.User):
             return user_id
         else:
-            return self.guild.get_member(int(user_id))
+            return self.guild.get_member(user_id)
+
+    def record_activity(self, user: discord.User) -> None:
+        """Mark a player as being active right now."""
+        self.player_activity[str(user.id)] = utils.now()
+
+    @property
+    def activity_diffs(self) -> Dict[discord.User, float]:
+        now = utils.now()
+        return {self.get_member(k): now - v for k, v in self.player_activity.items()}
 
     def _check_proposal(self, *ns) -> None:
         for n in ns:
@@ -211,3 +227,15 @@ class Game:
         for rule in parent.children:
             self.rules_channel.send(embed=rule.embed)
             self._repost_child_rules(rule)
+
+
+_GAMES = {}
+
+
+def get_game(guild: Union[discord.Guild, commands.Context]):
+    if not isinstance(guild, discord.Guild):
+        ctx = guild
+        guild = ctx.guild
+    if guild.id not in _GAMES:
+        _GAMES[guild.id] = Game(guild, 'ok')
+    return _GAMES[guild.id]

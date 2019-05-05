@@ -74,19 +74,18 @@ class General(commands.Cog):
                     embed.add_field(
                         name="Synopsis",
                         value=f"`{get_command_signature(command)}`",
-                        inline=True,
                     )
                 if command.aliases:
                     aliases = ', '.join(f"`{alias}`" for alias in command.aliases)
                     embed.add_field(
                         name="Aliases",
                         value=aliases,
-                        inline=True,
                     )
                 if command.help:
                     embed.add_field(
                         name="Description",
                         value=command.help,
+                        inline=False,
                     )
                 if hasattr(command, 'commands'):
                     subcommands = []
@@ -99,6 +98,7 @@ class General(commands.Cog):
                     embed.add_field(
                         name="Subcommands",
                         value="\n".join(subcommands),
+                        inline=False,
                     )
                 misc = ''
                 if not command.enabled:
@@ -108,7 +108,8 @@ class General(commands.Cog):
                 if misc:
                     embed.add_field(
                         name="Miscellaneous",
-                        value=misc
+                        value=misc,
+                        inline=False,
                     )
                 await ctx.send(embed=embed)
             else:
@@ -132,14 +133,19 @@ class General(commands.Cog):
             )
             for cog_name in sorted(cog_names):
                 lines = []
-                for command in sorted(self.bot.get_cog(cog_name).get_commands(), key=lambda cmd: cmd.name):
+                cog = self.bot.get_cog(cog_name)
+                for command in sorted(cog.get_commands(), key=lambda cmd: cmd.name):
                     if not command.hidden and (await command.can_run(ctx)):
                         line = f"\N{BULLET} **`{get_command_signature(command)}`**"
                         if command.short_doc:
                             line += f" \N{EM DASH} {command.short_doc}"
                         lines.append(line)
                 if lines:
-                    embed.add_field(name=cog_name, value="\n".join(lines))
+                    if hasattr(cog, 'name'):
+                        name = cog.name
+                    else:
+                        name = cog_name
+                    embed.add_field(name=name, value="\n".join(lines), inline=False)
             await ctx.send(embed=embed)
 
     @commands.command(aliases=['i', 'info'])
@@ -154,11 +160,9 @@ class General(commands.Cog):
             ).add_field(
                 name="Author",
                 value=f"[{info.AUTHOR}]({info.AUTHOR_LINK})",
-                inline=True,
             ).add_field(
-                name="GitHub Repository",
+                name="GitHub repository",
                 value=info.GITHUB_LINK,
-                inline=True,
             ).set_footer(f"{info.NAME} v{info.VERSION}")
         )
 

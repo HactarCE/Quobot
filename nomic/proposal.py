@@ -1,11 +1,11 @@
+from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
-from dataclasses import dataclass
 import datetime
 import discord
 
 from .playerdict import PlayerDict
-from utils import colors
+from constants import colors
 import utils
 
 
@@ -20,7 +20,18 @@ VOTE_TYPES = ('for', 'against', 'abstain')
 
 
 @dataclass
-class Proposal:
+class _Proposal:
+    game: object  # We can't access nomic.game.Game from here.
+    n: int
+    author: discord.User
+    content: str
+    status: ProposalStatus = ProposalStatus.VOTING
+    message_id: Optional[int] = None
+    votes: PlayerDict = None
+    timestamp: int = None
+
+
+class Proposal(_Proposal):
     """A dataclass representing a Nomic proposal.
 
     Attributes:
@@ -38,15 +49,6 @@ class Proposal:
     - timestamp (default now)
     """
 
-    game: object  # We can't access nomic.game.Game from here.
-    n: int
-    author: discord.User
-    content: str
-    status: ProposalStatus = ProposalStatus.VOTING
-    message_id: Optional[int] = None
-    votes: PlayerDict = None
-    timestamp: int = None
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if not isinstance(self.author, discord.User):
@@ -58,10 +60,15 @@ class Proposal:
             self.timestamp = utils.now()
 
     def export(self) -> dict:
-        d = self._asdict()
-        d['status'] = self.status.value
-        d['votes'] = self.votes.export()
-        return d
+        return {
+            'n': self.n,
+            'author': self.author.id,
+            'content': self.content,
+            'status': self.status.value,
+            'message_id': self.message_id,
+            'votes': self.votes.export(),
+            'timestamp': self.timestamp,
+        }
 
     async def fetch_message(self) -> discord.Message:
         return await self.game.proposals_channel.fetch_message(self.message_id)
@@ -115,3 +122,5 @@ class Proposal:
             fields=fields,
             footer_text=footer,
         )
+
+    # TODO __repr__ and __str__

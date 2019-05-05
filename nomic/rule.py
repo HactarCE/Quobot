@@ -1,15 +1,23 @@
-from typing import Optional, List
 from dataclasses import dataclass
+from typing import Optional, List
 import discord
 import re
 
-from .rule import Rule
-from utils import colors
-import utils
+from constants import colors
 
 
 @dataclass
-class Rule:
+class _Rule:
+    game: object
+    tag: str
+    title: str
+    content: str
+    parent: Optional['Rule'] = 'root'
+    children: List['Rule'] = None
+    message_ids: List[int] = None
+
+
+class Rule(_Rule):
     """A dataclass representing a section or subsection of the game rules.
 
     Attributes:
@@ -27,16 +35,12 @@ class Rule:
       list of integer IDs)
     """
 
-    game: object
-    tag: str
-    title: str
-    content: str
-    parent: Optional[Rule] = 'root'
-    children: List[Rule] = []
-    message_ids: List[int] = []
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if self.children is None:
+            self.children = []
+        if self.message_ids is None:
+            self.message_ids = []
         if isinstance(self.parent, str):
             self.parent = self.game.get_rule(self.parent)
         for i, v in enumerate(self.children):
@@ -44,12 +48,14 @@ class Rule:
                 self.children[i] = self.game.get_rule(v)
 
     def export(self) -> dict:
-        d = self._asdict()
-        d.update({
+        return {
+            'tag': self.tag,
+            'title': self.title,
+            'content': self.content,
             'parent': self.parent and self.parent.tag,
             'children': [r.tag for r in self.children],
-        })
-        return d
+            'message_ids': self.message_ids,
+        }
 
     async def fetch_messages(self) -> discord.Message:
         return [self.game.rules_channel.fetch_message(message_id)
@@ -121,7 +127,7 @@ class Rule:
         for i, chunk in enumerate(chunks):
             title = self.title
             if len(chunks) > 1:
-                title += f" ({i}/{len(chunks)})"
+                title += f" ({i + 1}/{len(chunks)})"
             embeds.append(discord.Embed(
                 color=colors.INFO,
                 title=title,
@@ -129,5 +135,7 @@ class Rule:
             ).set_footer(self.tag))
 
     @classmethod
-    def get_root(cls, game: object) -> Rule:
+    def get_root(cls, game: object) -> 'Rule':
         return cls(game=game, tag='root', title=None, content=None)
+
+    # TODO __repr__ and __str__
