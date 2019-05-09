@@ -52,12 +52,12 @@ class ActivePlayers(commands.Cog):
             users = hour_diffs.keys()
         if only_active:
             users = (u for u in users if hour_diffs[u] <= cutoff)
-        users = utils.discord.sort_users(users)
+        users = utils.discord.sort_users(set(users))
         users.sort(key=lambda u: hour_diffs.get(u, never_seen))
         active_count = 0
         inactive_count = 0
-        active_lines = ''
-        inactive_lines = ''
+        active_text = ''
+        inactive_text = ''
         for u in users:
             diff = hour_diffs.get(u)
             if diff is None:
@@ -67,25 +67,27 @@ class ActivePlayers(commands.Cog):
             else:
                 last_seen_text = f"about {utils.format_hours(diff)} ago"
             active = diff is not None and diff <= cutoff
-            line = f"{u.mention} was last seen **{last_seen_text}** _({'in' if not active else ''}active)_\n"
+            line = f"{u.mention} was last seen **{last_seen_text}**.\n"
             if active:
                 active_count += 1
-                active_lines += line
+                active_text += line
             else:
                 inactive_count += 1
-                inactive_lines += line
+                inactive_text += line
         active_count = f" ({active_count})" if active_count else ""
         inactive_count = f" ({inactive_count})" if inactive_count else ""
         embed = discord.Embed(
             color=colors.INFO,
         ).add_field(
             name=f"Active players{active_count}",
-            value=active_lines or strings.NONE,
+            value=active_text or strings.NONE,
+            inline=False,
         )
-        if inactive_lines:
+        if inactive_text:
             embed.add_field(
                 name=f"Inactive players{inactive_count}",
-                value=inactive_lines,
+                value=inactive_text,
+                inline=False,
             )
         embeds = utils.discord.split_embed(embed)
         for embed in embeds:

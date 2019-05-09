@@ -2,7 +2,7 @@ from typing import List, Tuple
 import asyncio
 import discord
 
-from constants import emoji
+from constants import emoji, strings
 
 
 # https://birdie0.github.io/discord-webhooks-guide/other/field_limits.html
@@ -49,7 +49,6 @@ def split_embed(embed: discord.Embed) -> List[discord.Embed]:
     This function does not account for embed titles or descriptions; only
     fields. Inline fields that are too long will be made non-inline.
     """
-    # TODO: really test this
     footer = embed.footer or ''
     empty_embed = discord.Embed(color=embed.color)
     embeds = [discord.Embed(color=embed.color, title=embed.title)]
@@ -64,16 +63,20 @@ def split_embed(embed: discord.Embed) -> List[discord.Embed]:
         name = field['name']
         value = field['value']
         if value and len(value) >= MAX_EMBED_VALUE:
-            former, latter = _split_text(value)
-            field_stack.push({
+            former, latter = _split_text(value, MAX_EMBED_VALUE)
+            latter_name = name
+            if not name.endswith(strings.CONTINUED):
+                latter_name += strings.CONTINUED
+            # This is a LIFO stack, so push the latter field first.
+            field_stack.append({
+                'name': latter_name,
+                'value': latter,
+                'inline': False
+            })
+            field_stack.append({
                 'name': name,
                 'value': former,
                 'inline': False,
-            })
-            field_stack.push({
-                'name': None,
-                'value': latter,
-                'inline': False
             })
         else:
             field_length = len(name or '') + len(value or '')
@@ -143,7 +146,7 @@ async def invoke_command(ctx, command_name_to_invoke, *args, **kwargs):
 
 def sort_users(user_list):
     def key(user):
-        if isinstance(user, discord.User):
+        if isinstance(user, discord.abc.User):
             return user.display_name.lower()
         else:
             return user

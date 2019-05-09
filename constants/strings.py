@@ -5,3 +5,5 @@ YESNO = {
 }
 
 NONE = "_(none)_"
+
+CONTINUED = " _cont._"
