@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
-import datetime
+from datetime import datetime
 import discord
 
 from .playerdict import PlayerDict

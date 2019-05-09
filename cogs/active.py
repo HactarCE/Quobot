@@ -80,7 +80,7 @@ class ActivePlayers(commands.Cog):
             color=colors.INFO,
         ).add_field(
             name=f"Active players{active_count}",
-            value=active_text or strings.NONE,
+            value=active_text or strings.EMPTY_LIST,
             inline=False,
         )
         if inactive_text:

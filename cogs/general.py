@@ -3,7 +3,7 @@ import discord
 
 from utils import l
 from utils.discord import invoke_command
-from constants import colors, info
+from constants import colors, info, strings
 
 
 async def invoke_command_help(ctx):
@@ -94,7 +94,7 @@ class General(commands.Cog):
                     subcommands.sort()
                     embed.add_field(
                         name="Subcommands",
-                        value="\n".join(subcommands),
+                        value="\n".join(subcommands) or strings.EMPTY_LIST,
                         inline=False,
                     )
                 misc = ''

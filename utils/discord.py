@@ -2,6 +2,7 @@ from discord.ext import commands
 from typing import List, Tuple
 import asyncio
 import discord
+from datetime import datetime
 
 from constants import emoji, strings
 
@@ -23,6 +24,13 @@ def embed_field(name, value, inline=False):
         'name': name,
         'value': value,
         'inline': inline,
+    }
+
+
+def embed_happened_footer(past_participle: str, user: discord.abc.User):
+    return {
+        'text': f"{past_participle} by {fake_mention(user)}",
+        'icon_url': user.avatar_url,
     }
 
 

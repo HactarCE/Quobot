@@ -46,7 +46,7 @@ def format_hours(hours):
 def human_list(words, oxford_comma=True):
     words = list(words)
     if len(words) == 0:
-        return strings.NONE
+        return strings.EMPTY_LIST
     elif len(words) == 1:
         return words[0]
     s = ", ".join(words[:-1])

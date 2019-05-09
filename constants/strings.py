@@ -4,6 +4,8 @@ YESNO = {
     't': "timed out",
 }
 
-NONE = "_(none)_"
+EMPTY_LIST = "(none)"
 
 CONTINUED = " _cont._"
+
+TIME_FORMAT = 'UTC %H:%M:%S on %Y-%m-%d'

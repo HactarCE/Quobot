@@ -84,20 +84,24 @@ class Game:
             'rules': {k: r.export() for k, r in self.rules.items()},
         }
 
-    def get_member(self, user_id: int) -> discord.User:
-        if isinstance(user_id, discord.User):
+    def get_member(self, user_id: Union[int, discord.abc.User]) -> discord.Member:
+        if isinstance(user_id, discord.Member):
             return user_id
+        elif isinstance(user_id, discord.abc.User):
+            return self.guild.get_member(user_id.id)
         else:
             return self.guild.get_member(user_id)
 
-    def record_activity(self, user: discord.User) -> None:
+    def record_activity(self, user: discord.abc.User) -> None:
         """Mark a player as being active right now."""
         self.player_activity[user] = utils.now()
 
     @property
-    def activity_diffs(self) -> Dict[discord.User, float]:
+    def activity_diffs(self) -> PlayerDict:
         now = utils.now()
-        return {k: now - v for k, v in self.player_activity.items()}
+        return PlayerDict(self, {
+            k: now - v for k, v in self.player_activity.items()
+        })
 
     def _check_proposal(self, *ns) -> None:
         for n in ns:
