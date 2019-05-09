@@ -1,5 +1,5 @@
 from discord.ext import commands
-from typing import Dict, Union
+from typing import Dict, Optional, Union
 import asyncio
 import discord
 import re
@@ -21,7 +21,7 @@ class Game:
     Do not instantiate this class directly; use game.get_game() instead.
     """
 
-    def __init__(self, guild: discord.Guild, do_not_instantiate_directly: None):
+    def __init__(self, guild: discord.Guild, do_not_instantiate_directly=None):
         """Do not instantiate this class directly; use game.get_game() instead.
         """
         if do_not_instantiate_directly != 'ok':
@@ -96,12 +96,27 @@ class Game:
         """Mark a player as being active right now."""
         self.player_activity[user] = utils.now()
 
+    def get_activity_diff(self, user: discord.abc.User) -> Optional[int]:
+        """Get the number of seconds since a player was last active, or None if
+        they do not exist.
+        """
+        if user in self.player_activity:
+            return utils.now() - self.player_activity.get(user)
+
     @property
     def activity_diffs(self) -> PlayerDict:
-        now = utils.now()
+        """Get a PlayerDict of values returned by Game.get_activity_diff()."""
         return PlayerDict(self, {
-            k: now - v for k, v in self.player_activity.items()
+            user: self.get_activity_diff(user) for user in self.player_activity
         })
+
+    def is_active(self, user: Union[int, discord.abc.User]) -> bool:
+        diff = self.get_activity_diff(user)
+        seconds_cutoff = self.flags.player_activity_cutoff * 3600
+        return diff is not None and diff <= seconds_cutoff
+
+    def is_inactive(self, user: Union[int, discord.abc.User]) -> bool:
+        return not self.is_active(user)
 
     def _check_proposal(self, *ns) -> None:
         for n in ns:
@@ -238,10 +253,14 @@ class Game:
 _GAMES = {}
 
 
-def get_game(guild: Union[discord.Guild, commands.Context]):
-    if not isinstance(guild, discord.Guild):
-        ctx = guild
+def get_game(arg: Union[discord.Guild, commands.Context]):
+    if isinstance(arg, discord.Guild):
+        guild = arg
+    elif isinstance(arg, commands.Context):
+        ctx = arg
         guild = ctx.guild
+    else:
+        raise TypeError(f"Cannot get game from type {type(arg)!r}: {arg!r}")
     if guild.id not in _GAMES:
         _GAMES[guild.id] = Game(guild, 'ok')
     return _GAMES[guild.id]

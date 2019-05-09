@@ -26,7 +26,7 @@ class PlayerDict(dict):
         if isinstance(m, discord.Member):
             return m
         if isinstance(m, discord.abc.User):
-            return self.member_getter(m.id)
+            return self.get_member(m.id)
         try:
             return self.get_member(int(m))
         except TypeError:

@@ -1,30 +1,31 @@
-from typing import List
+from typing import Iterator
 from discord.ext import commands
 import discord
 
+from cogs.general import invoke_command_help
 from constants import colors, strings
 from nomic.game import get_game
 from utils import l
 import utils
 
 
-class ActivePlayers(commands.Cog):
+class PlayerActivity(commands.Cog):
     """Commands for tracking active players."""
 
-    name = "Active players"
+    name = "Player activity"
 
     def __init__(self, bot):
         self.bot = bot
 
-    async def record_activity(self, guild, user):
-        game = get_game(guild)
+    async def record_activity(self, ctx, user):
+        game = get_game(ctx)
         # Don't bother updating the player activity if they've been active
         # in the last ten minutes.
         diffs = game.activity_diffs
         if user not in diffs or diffs.get(user) > 60 * 10:
             game.record_activity(user)
             await game.save()
-            l.info(f"Recorded activity for {utils.discord.fake_mention(user)!r} on {guild.name!r}")
+            l.info(f"Recorded activity for {utils.discord.fake_mention(user)!r} on {game.guild.name!r}")
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -36,39 +37,25 @@ class ActivePlayers(commands.Cog):
         if not user.bot:
             await self.record_activity(reaction.message.guild, user)
 
-    @commands.group('active')
-    async def active_players(self, ctx):
-        """Track active players."""
-        if ctx.invoked_subcommand is None:
-            await utils.discord.invoke_command(ctx, 'active list')
-
-    async def _list_players(self, ctx, users: List[discord.Member] = None, only_active: bool = False):
-        game = get_game(ctx.guild)
-        activity_diffs = game.activity_diffs
-        hour_diffs = {k: v // (60 * 60) for k, v in activity_diffs.items()}
-        cutoff = game.flags.player_activity_cutoff
-        never_seen = max(0, cutoff, *hour_diffs.values()) + 1
-        if not users:
-            users = hour_diffs.keys()
-        if only_active:
-            users = (u for u in users if hour_diffs[u] <= cutoff)
-        users = utils.discord.sort_users(set(users))
-        users.sort(key=lambda u: hour_diffs.get(u, never_seen))
+    async def _list_players(self, ctx, users: Iterator[discord.abc.User] = None):
+        game = get_game(ctx)
+        users = set(users)
+        users = utils.discord.sort_users(users)
+        users.sort(key=game.get_activity_diff)
         active_count = 0
         inactive_count = 0
         active_text = ''
         inactive_text = ''
         for u in users:
-            diff = hour_diffs.get(u)
-            if diff is None:
+            hours = game.get_activity_diff(u) // 3600
+            if hours is None:
                 last_seen_text = "never"
-            elif diff < 2:
+            elif hours < 2:
                 last_seen_text = "very recently"
             else:
-                last_seen_text = f"about {utils.format_hours(diff)} ago"
-            active = diff is not None and diff <= cutoff
+                last_seen_text = f"about {utils.format_hours(hours)} ago"
             line = f"{u.mention} was last seen **{last_seen_text}**.\n"
-            if active:
+            if game.is_active(u):
                 active_count += 1
                 active_text += line
             else:
@@ -78,11 +65,13 @@ class ActivePlayers(commands.Cog):
         inactive_count = f" ({inactive_count})" if inactive_count else ""
         embed = discord.Embed(
             color=colors.INFO,
-        ).add_field(
-            name=f"Active players{active_count}",
-            value=active_text or strings.EMPTY_LIST,
-            inline=False,
         )
+        if active_text:
+            embed.add_field(
+                name=f"Active players{active_count}",
+                value=active_text,
+                inline=False,
+            )
         if inactive_text:
             embed.add_field(
                 name=f"Inactive players{inactive_count}",
@@ -93,17 +82,41 @@ class ActivePlayers(commands.Cog):
         for embed in embeds:
             await ctx.send(embed=embed)
 
-    @active_players.command('listall', aliases=['la'])
-    async def active_players_list_all(self, ctx):
+    @commands.group('activity')
+    async def activity(self, ctx):
+        """Track active players."""
+        if ctx.invoked_subcommand is None:
+            # await invoke_command_help(ctx)
+            await utils.discord.invoke_command(ctx, 'activity list')
+
+    @activity.command('list', aliases=['l', 'ls'])
+    async def active_players_list_all(self, ctx, *users: discord.abc.User):
         """List all tracked players, both active and inactive."""
-        await self._list_players(ctx)
+        await self._list_players(ctx, users or get_game(ctx).player_activity.keys())
 
-    @active_players.command('list', aliases=['l', 'ls'])
-    async def active_players_list_active(self, ctx, *users: discord.Member):
-        """List the specified players, or all active players."""
-        await self._list_players(ctx, users, not users)
+    @activity.command('active')
+    async def activity_active(self, ctx):
+        """List all active players."""
+        game = get_game(ctx)
+        await self._list_players(ctx, filter(game.is_active, game.player_activity))
 
-    @active_players.command('cutoff', aliases=['limit', 'threshold'])
+    @activity.command('inactive')
+    async def activity_inactive(self, ctx):
+        """List all inactive players."""
+        game = get_game(ctx)
+        await self._list_players(ctx, filter(game.is_inactive, game.player_activity))
+
+    @commands.command('active')
+    async def active(self, ctx):
+        """List all active players. See `activity active`."""
+        await utils.discord.invoke_command(ctx, 'activity active')
+
+    @commands.command('inactive')
+    async def inactive(self, ctx):
+        """List all inactive players. See `activity inactive`."""
+        await utils.discord.invoke_command(ctx, 'activity inactive')
+
+    @activity.command('cutoff', aliases=['limit', 'threshold'])
     async def active_cutoff(self, ctx, new_cutoff_in_hours: int = None):
         """Set or view the player activity cutoff time.
 
@@ -138,4 +151,4 @@ class ActivePlayers(commands.Cog):
 
 
 def setup(bot):
-    bot.add_cog(ActivePlayers(bot))
+    bot.add_cog(PlayerActivity(bot))

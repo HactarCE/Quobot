@@ -59,7 +59,7 @@ class DB(dict):
     - filepath -- str
     """
 
-    def __init__(self, db_name: str, do_not_instantiate_directly: None):
+    def __init__(self, db_name: str, do_not_instantiate_directly=None):
         """Do not instantiate this class directly; use database.get_db()
         instead.
         """
