@@ -163,7 +163,7 @@ class General(commands.Cog):
             ).add_field(
                 name="GitHub repository",
                 value=info.GITHUB_LINK,
-            ).set_footer(f"{info.NAME} v{info.VERSION}")
+            ).set_footer(text=f"{info.NAME} v{info.VERSION}")
         )
 
 

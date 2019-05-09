@@ -8,6 +8,7 @@ from constants import colors, emoji
 from database import get_db
 from utils import l, mutget
 from .gameflags import GameFlags
+from .playerdict import PlayerDict
 from .proposal import Proposal
 from .quantity import Quantity
 from .rule import Rule
@@ -36,7 +37,7 @@ class Game:
         self._load_rule(mutget(self.db, 'rules', {
             'root': {'tag': 'root', 'title': None, 'content': None},
         }), 'root')
-        self.player_activity = mutget(self.db, 'last_activity', {})
+        self.player_activity = PlayerDict(self, mutget(self.db, 'player_activity', {}))
         channels = mutget(self.db, 'channels', {})
         self.proposals_channel  = guild.get_channel(channels.get('proposals'))
         self.quantities_channel = guild.get_channel(channels.get('quantities'))
@@ -77,6 +78,7 @@ class Game:
                 'rules': self.rules_channel and self.rules_channel.id,
             },
             'flags': self.flags.export(),
+            'player_activity': self.player_activity.export(),
             'proposals': [p.export() for p in self.proposals],
             'quantities': {k: q.export() for k, q in self.quantities.items()},
             'rules': {k: r.export() for k, r in self.rules.items()},
@@ -90,12 +92,12 @@ class Game:
 
     def record_activity(self, user: discord.User) -> None:
         """Mark a player as being active right now."""
-        self.player_activity[str(user.id)] = utils.now()
+        self.player_activity[user] = utils.now()
 
     @property
     def activity_diffs(self) -> Dict[discord.User, float]:
         now = utils.now()
-        return {self.get_member(k): now - v for k, v in self.player_activity.items()}
+        return {k: now - v for k, v in self.player_activity.items()}
 
     def _check_proposal(self, *ns) -> None:
         for n in ns:

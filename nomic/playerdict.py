@@ -20,24 +20,40 @@ class PlayerDict(dict):
         self.get_member = member_getter.get_member
         if not member_values:
             member_values = {}
-        super().__init__(**{self._to_member(m): v for m, v in member_values})
-        if None in self:
-            del self[None]
+        super().__init__({self._to_member(m): v for m, v in member_values.items()})
 
     def _to_member(self, m):
-        if isinstance(m, discord.User):
+        if isinstance(m, discord.Member):
             return m
-        else:
+        if isinstance(m, discord.abc.User):
+            return self.member_getter(m.id)
+        try:
             return self.get_member(int(m))
+        except TypeError:
+            pass
+        raise TypeError(f"{self.__class__.__name__} can only contain Member objects as keys, not {type(m)}: {m!r}")
 
     def __setitem__(self, key, value):
-        return super()
+        key = self._to_member(key)
+        return super().__setitem__(key, value)
+
+    def __getitem__(self, key):
+        return super().__getitem__(self._to_member(key))
+
+    def __delitem__(self, key):
+        return super().__delitem__(self._to_member(key))
+
+    def __contains__(self, key):
+        try:
+            return super().__contains__(self._to_member(key))
+        except TypeError:
+            return False
 
     def export(self):
-        return {str(m.id): v for m, v in self}
+        return {str(m.id): v for m, v in self.sorted_items()}
 
     def sorted_keys(self):
-        return utils.sort_users(self.keys(), self.member_getter)
+        return utils.discord.sort_users(self.keys())
 
     def sorted_items(self):
         return ((k, self[k]) for k in self.sorted_keys())

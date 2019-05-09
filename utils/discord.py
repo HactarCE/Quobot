@@ -1,7 +1,15 @@
+from typing import List, Tuple
 import asyncio
 import discord
 
 from constants import emoji
+
+
+# https://birdie0.github.io/discord-webhooks-guide/other/field_limits.html
+MAX_EMBEDS = 10
+MAX_EMBED_FIELDS = 25
+MAX_EMBED_VALUE = 1024
+MAX_EMBED_TOTAL = 6000
 
 
 def fake_mention(user):
@@ -17,29 +25,75 @@ def embed_field(name, value, inline=False):
     }
 
 
-# def make_embed(*, fields=[], footer_text=None, **kwargs):
-#     """Makes an embed.
+def _split_text(p: str, max_len: int) -> Tuple[str, str]:
+    """Split text given some maximum length.
 
-#     fields=[] -- An array of lists/tuples, each taking one of the following forms:
-#                  (value)
-#                  (name, value)
-#                  (name, value, inline)
-#     *
-#     footer_text=None -- The embed's footer, if any
-#     **kwargs -- Any other arguments are passed to discord.Embed()
-#     """
-#     embed = discord.Embed(**kwargs)
-#     for field in fields:
-#         field = list(field)
-#         if len(field) < 2:
-#             field.insert(0, None)
-#         if len(field) < 3:
-#             field.append(False)
-#         name, value, inline = field
-#         embed.add_field(name=name, value=value, inline=inline)
-#     if footer_text:
-#         embed.set_footer(text=footer_text)
-#     return embed
+    This function will try to split at paragraph boundaries ('\n\n'), then at
+    linebreaks ('\n'), then at spaces (' '), and at a last resort between words.
+    """
+    if len(p) < max_len:
+        return p
+    i = p.rfind('\n\n', 0, max_len)
+    if i == -1:
+        i = p.rfind('\n', 0, max_len)
+    if i == -1:
+        i = p.rfind(' ', 0, max_len)
+    if i == -1:
+        i = max_len - 1
+    return p[:i], p[i:].strip()
+
+
+def split_embed(embed: discord.Embed) -> List[discord.Embed]:
+    """Split an embed as needed in order to avoid hitting Discord's size limits.
+
+    This function does not account for embed titles or descriptions; only
+    fields. Inline fields that are too long will be made non-inline.
+    """
+    # TODO: really test this
+    footer = embed.footer or ''
+    empty_embed = discord.Embed(color=embed.color)
+    embeds = [discord.Embed(color=embed.color, title=embed.title)]
+    length = len(embed.title)
+    field_stack = [{
+        'name': field.name.strip(),
+        'value': field.value.strip(),
+        'inline': field.inline,
+    } for field in reversed(embed.fields)]
+    while field_stack:
+        field = field_stack.pop()
+        name = field['name']
+        value = field['value']
+        if value and len(value) >= MAX_EMBED_VALUE:
+            former, latter = _split_text(value)
+            field_stack.push({
+                'name': name,
+                'value': former,
+                'inline': False,
+            })
+            field_stack.push({
+                'name': None,
+                'value': latter,
+                'inline': False
+            })
+        else:
+            field_length = len(name or '') + len(value or '')
+            length += field_length
+            too_many_fields = len(embeds[-1].fields) >= MAX_EMBED_FIELDS
+            # Subtract footer and some extra wiggle room
+            too_big_embed = length >= MAX_EMBED_TOTAL - len(footer) - 10
+            if too_many_fields or too_big_embed:
+                embeds.append(empty_embed.copy())
+            embeds[-1].add_field(**field)
+    if len(embeds) == 1:
+        embeds[-1].set_footer(text=footer)
+    else:
+        if footer:
+            footer += f" ({{}}/{len(embeds)})"
+        else:
+            footer = f"{{}}/{len(embeds)}"
+        for i, embed in enumerate(embeds):
+            embed.set_footer(text=footer.format(i + 1))
+    return embeds
 
 
 async def get_confirm(ctx, m, timeout=30):

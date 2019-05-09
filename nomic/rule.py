@@ -132,7 +132,7 @@ class Rule(_Rule):
                 color=colors.INFO,
                 title=title,
                 description=chunk,
-            ).set_footer(self.tag))
+            ).set_footer(text=self.tag))
 
     @classmethod
     def get_root(cls, game: object) -> 'Rule':
