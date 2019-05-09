@@ -86,6 +86,7 @@ def split_embed(embed: discord.Embed) -> List[discord.Embed]:
             too_big_embed = length >= MAX_EMBED_TOTAL - len(footer) - 10
             if too_many_fields or too_big_embed:
                 embeds.append(empty_embed.copy())
+                length = 0
             embeds[-1].add_field(**field)
     if len(embeds) == 1:
         embeds[-1].set_footer(text=footer)
