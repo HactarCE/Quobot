@@ -2,7 +2,7 @@ from typing import List
 from discord.ext import commands
 import discord
 
-from constants import colors, info, strings
+from constants import colors, strings
 from nomic.game import get_game
 from utils import l
 import utils

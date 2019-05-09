@@ -1,8 +1,7 @@
 from datetime import datetime
 import logging
 
-import discord
-from discord.ext import commands
+from constants import strings
 
 
 l = logging.getLogger('bot')
@@ -47,10 +46,14 @@ def format_hours(hours):
 def human_list(words, oxford_comma=True):
     words = list(words)
     if len(words) == 0:
-        return "(none)"
+        return strings.NONE
     elif len(words) == 1:
         return words[0]
-    return ", ".join(words[:-1]) + ("," if oxford_comma else '') + " and " + words[-1]
+    s = ", ".join(words[:-1])
+    if oxford_comma and len(words) > 2:
+        s += ","
+    s += " and " + words[-1]
+    return s
 
 
 def format_discord_color(color):
@@ -123,27 +126,16 @@ def lazy_mutget(d, keys, value_lambda):
     return d[keys[-1]]
 
 
-class MultiplierConverter(commands.Converter):
-    async def convert(self, ctx, argument):
-        s = argument.lower().strip()
-        try:
-            if s.startswith('x'):
-                return int(s[1:])
-            elif s.endswith('x'):
-                return int(s[:-1])
-            else:
-                return int(s)
-        except ValueError:
-            raise discord.CommandError("Unable to convert to multiplier")
-
-
 INFINITY = float('inf')
+
 
 def isnan(value):
     return value != value
 
+
 def isinf(value):
-    return abs(vallue) == INFINITY
+    return abs(value) == INFINITY
+
 
 def isfinite(value):
     return not (isnan(value) or isinf(value))

@@ -1,3 +1,4 @@
+from discord.ext import commands
 from typing import List, Tuple
 import asyncio
 import discord
@@ -152,3 +153,17 @@ def sort_users(user_list):
         else:
             return user
     return sorted(user_list, key=key)
+
+
+class MultiplierConverter(commands.Converter):
+    async def convert(self, ctx, argument):
+        s = argument.lower().strip()
+        try:
+            if s.startswith('x'):
+                return int(s[1:])
+            elif s.endswith('x'):
+                return int(s[:-1])
+            else:
+                return int(s)
+        except ValueError:
+            raise discord.CommandError("Unable to convert to multiplier")
