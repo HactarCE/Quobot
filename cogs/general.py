@@ -52,9 +52,6 @@ class General(commands.Cog):
     @commands.command(aliases=['h', 'man'])
     async def help(self, ctx, *, command_name: str = None):
         """Display a list of all commands or display information about a specific command."""
-        prefix = await self.bot.get_prefix(ctx.message)
-        if isinstance(prefix, list):
-            prefix = prefix[0]
         if command_name:
             command = self.bot.get_command(command_name)
             if command is None:
@@ -129,7 +126,7 @@ class General(commands.Cog):
             embed = discord.Embed(
                 color=colors.HELP,
                 title="Command list",
-                description=f"Invoke a command by prefixing it with `{prefix}`. Use `{prefix}{ctx.command.name} [command]` to get help on a specific command.",
+                description=f"Invoke a command by prefixing it with `{ctx.prefix}`. Use `{ctx.prefix}{ctx.command.name} [command]` to get help on a specific command.",
             )
             for cog_name in sorted(cog_names):
                 lines = []

@@ -2,7 +2,7 @@ from typing import List
 from discord.ext import commands
 import discord
 
-from constants import colors, strings
+from constants import colors, info, strings
 from nomic.game import get_game
 from utils import l
 import utils
@@ -104,23 +104,26 @@ class ActivePlayers(commands.Cog):
         await self._list_players(ctx, users, not users)
 
     @active_players.command('cutoff', aliases=['limit', 'threshold'])
-    async def active_cutoff(self, ctx, new_cutoff: int = None):
+    async def active_cutoff(self, ctx, new_cutoff_in_hours: int = None):
         """Set or view the player activity cutoff time.
 
-        `new_cutoff`, if specified, must be an integer number of hours.
+        `new_cutoff_in_hours`, if specified, must be an integer number of hours.
         """
         game = get_game(ctx)
         description = f"The player activity cutoff is currently **{utils.format_hours(game.flags.player_activity_cutoff)}**."
-        if new_cutoff is None:
+        if new_cutoff_in_hours is None:
+            if await utils.discord.is_admin(ctx):
+                description += f" Use `{ctx.prefix}{ctx.invoked_with} [new_cutoff_in_hours]` to change it."
             await ctx.send(embed=discord.Embed(
-                color=colors.EMBED_INFO,
+                color=colors.INFO,
                 title="Player activity cutoff",
                 description=description,
             ))
         else:
-            description += f" Changed it to **{utils.format_hours(new_cutoff)}**?"
+            new_cutoff = new_cutoff_in_hours
+            description += f" Change it to **{utils.format_hours(new_cutoff)}**?"
             m = await ctx.send(embed=discord.Embed(
-                color=colors.EMBED_INFO,
+                color=colors.INFO,
                 title="Change player activity cutoff?",
                 description=description,
             ))
