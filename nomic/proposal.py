@@ -1,7 +1,8 @@
+from collections import OrderedDict
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
 from typing import Optional
-from datetime import datetime
 import discord
 
 from .playerdict import PlayerDict
@@ -60,15 +61,15 @@ class Proposal(_Proposal):
             self.timestamp = utils.now()
 
     def export(self) -> dict:
-        return {
-            'n': self.n,
-            'author': self.author.id,
-            'content': self.content,
-            'status': self.status.value,
-            'message_id': self.message_id,
-            'votes': self.votes.export(),
-            'timestamp': self.timestamp,
-        }
+        return OrderedDict(
+            n=self.n,
+            author=self.author.id,
+            content=self.content,
+            status=self.status.value,
+            message_id=self.message_id,
+            votes=self.votes.export(),
+            timestamp=self.timestamp,
+        )
 
     async def fetch_message(self) -> discord.Message:
         return await self.game.proposals_channel.fetch_message(self.message_id)

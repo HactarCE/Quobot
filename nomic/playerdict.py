@@ -1,3 +1,4 @@
+from collections import OrderedDict
 import discord
 
 import utils
@@ -50,7 +51,7 @@ class PlayerDict(dict):
             return False
 
     def export(self):
-        return {str(m.id): v for m, v in self.sorted_items()}
+        return utils.sort_dict({str(m.id): v for m, v in self.sorted_items()})
 
     def sorted_keys(self):
         return utils.discord.sort_users(self.keys())

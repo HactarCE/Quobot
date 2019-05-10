@@ -1,5 +1,7 @@
 from dataclasses import asdict, dataclass
 
+import utils
+
 
 @dataclass
 class GameFlags:
@@ -11,4 +13,4 @@ class GameFlags:
     player_activity_cutoff: int = 24
 
     def export(self) -> dict:
-        return asdict(self)
+        return utils.sort_dict(asdict(self))

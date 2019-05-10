@@ -14,10 +14,10 @@ def load_data(filename: str) -> dict:
     try:
         with open(fullpath, 'r', encoding='utf-8') as f:
             data = json.load(f)
-        l.info(f"Loaded data file {filename}")
+        l.info(f"Loaded data file {path.relpath(filename)!r}")
         return data
     except Exception:
-        msg = f"Error loading {filename};"
+        msg = f"Error loading {path.relpath(filename)!r};"
         try:
             rename(fullpath, f'{fullpath}.{int(datetime.now().timestamp())}.bak')
             msg += f" backing up existing file and"
@@ -39,9 +39,9 @@ def save_data(filename: str, data: dict) -> None:
         with open(tempfile, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent='\t')
         rename(tempfile_path, path.join(DATA_DIR, filename))
-        l.info(f"Saved data file {filename}")
+        l.info(f"Saved data file {path.relpath(filename)!r}")
     except Exception:
-        l.warning(f"Error saving {filename}")
+        l.warning(f"Error saving {path.relpath(filename)!r}")
     finally:
         try:
             remove(tempfile_path)

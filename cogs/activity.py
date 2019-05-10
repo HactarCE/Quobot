@@ -2,7 +2,6 @@ from typing import Iterator
 from discord.ext import commands
 import discord
 
-from cogs.general import invoke_command_help
 from constants import colors, strings
 from nomic.game import get_game
 from utils import l
@@ -24,8 +23,8 @@ class PlayerActivity(commands.Cog):
         diffs = game.activity_diffs
         if user not in diffs or diffs.get(user) > 60 * 10:
             game.record_activity(user)
-            await game.save()
             l.info(f"Recorded activity for {utils.discord.fake_mention(user)!r} on {game.guild.name!r}")
+            await game.save()
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -41,19 +40,23 @@ class PlayerActivity(commands.Cog):
         game = get_game(ctx)
         users = set(users)
         users = utils.discord.sort_users(users)
-        users.sort(key=game.get_activity_diff)
+        diffs = game.activity_diffs
+        # Sort users, putting users that have never been seen at the bottom.
+        diff_if_never_seen = max(diffs.values()) + 1
+        users.sort(key=lambda u: diffs.get(u, diff_if_never_seen))
         active_count = 0
         inactive_count = 0
         active_text = ''
         inactive_text = ''
         for u in users:
-            hours = game.get_activity_diff(u) // 3600
-            if hours is None:
+            if u not in diffs:
                 last_seen_text = "never"
-            elif hours < 2:
-                last_seen_text = "very recently"
             else:
-                last_seen_text = f"about {utils.format_hours(hours)} ago"
+                hours = diffs.get(u) // 3600
+                if hours < 2:
+                    last_seen_text = "very recently"
+                else:
+                    last_seen_text = f"about {utils.format_hours(hours)} ago"
             line = f"{u.mention} was last seen **{last_seen_text}**.\n"
             if game.is_active(u):
                 active_count += 1
@@ -86,10 +89,9 @@ class PlayerActivity(commands.Cog):
     async def activity(self, ctx):
         """Track active players."""
         if ctx.invoked_subcommand is None:
-            # await invoke_command_help(ctx)
             await utils.discord.invoke_command(ctx, 'activity list')
 
-    @activity.command('list', aliases=['l', 'ls'])
+    @activity.command('list', aliases=['l', 'ls', 'of'])
     async def active_players_list_all(self, ctx, *users: discord.abc.User):
         """List all tracked players, both active and inactive."""
         await self._list_players(ctx, users or get_game(ctx).player_activity.keys())

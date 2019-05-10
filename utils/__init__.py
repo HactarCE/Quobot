@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from datetime import datetime
 import logging
 
@@ -59,6 +60,14 @@ def human_list(words, oxford_comma=True):
 def format_discord_color(color):
     s = color if isinstance(color, str) else color.value
     return f'#{hex(s)[2:]:0>6}'
+
+
+def sort_dict(d, **kwargs):
+    """Return an OrderedDict with the keys in sorted order.
+
+    All extra keyword arguments are passed to sorted().
+    """
+    return OrderedDict((k, d[k]) for k in sorted(d))
 
 
 def mutget(d, keys, value=None):

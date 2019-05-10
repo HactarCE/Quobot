@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from discord.ext import commands
 from typing import Dict, Optional, Union
 import asyncio
@@ -71,18 +72,22 @@ class Game:
         self.db.save()
 
     def export(self) -> dict:
-        return {
-            'channels': {
-                'proposals': self.proposals_channel and self.proposals_channel.id,
-                'quantities': self.quantities_channel and self.quantities_channel.id,
-                'rules': self.rules_channel and self.rules_channel.id,
-            },
-            'flags': self.flags.export(),
-            'player_activity': self.player_activity.export(),
-            'proposals': [p.export() for p in self.proposals],
-            'quantities': {k: q.export() for k, q in self.quantities.items()},
-            'rules': {k: r.export() for k, r in self.rules.items()},
-        }
+        return OrderedDict(
+            channels=OrderedDict(
+                proposals=self.proposals_channel and self.proposals_channel.id,
+                quantities=self.quantities_channel and self.quantities_channel.id,
+                rules=self.rules_channel and self.rules_channel.id,
+            ),
+            flags=self.flags.export(),
+            player_activity=self.player_activity.export(),
+            quantities=utils.sort_dict(
+                {k: q.export() for k, q in self.quantities.items()}
+            ),
+            proposals=[p.export() for p in self.proposals],
+            rules=utils.sort_dict(
+                {k: r.export() for k, r in self.rules.items()}
+            ),
+        )
 
     def get_member(self, user_id: Union[int, discord.abc.User]) -> discord.Member:
         if isinstance(user_id, discord.Member):

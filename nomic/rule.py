@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from dataclasses import dataclass
 from typing import Optional, List
 import discord
@@ -48,14 +49,14 @@ class Rule(_Rule):
                 self.children[i] = self.game.get_rule(v)
 
     def export(self) -> dict:
-        return {
-            'tag': self.tag,
-            'title': self.title,
-            'content': self.content,
-            'parent': self.parent and self.parent.tag,
-            'children': [r.tag for r in self.children],
-            'message_ids': self.message_ids,
-        }
+        return OrderedDict(
+            tag=self.tag,
+            title=self.title,
+            content=self.content,
+            parent=self.parent and self.parent.tag,
+            children=[r.tag for r in self.children],
+            message_ids=self.message_ids,
+        )
 
     async def fetch_messages(self) -> discord.Message:
         return [self.game.rules_channel.fetch_message(message_id)
