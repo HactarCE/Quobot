@@ -4,6 +4,7 @@ from database import get_db
 CONFIG = get_db('config')
 
 DAEMON = CONFIG.get('daemon', False)
+DEV = CONFIG.get('dev', False)
 TOKEN = CONFIG.get('token')
 COMMAND_PREFIX = CONFIG.get('prefix', '!')
 

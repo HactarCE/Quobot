@@ -41,7 +41,7 @@ def _split_text(p: str, max_len: int) -> Tuple[str, str]:
     linebreaks ('\n'), then at spaces (' '), and at a last resort between words.
     """
     if len(p) < max_len:
-        return p
+        return p, None
     i = p.rfind('\n\n', 0, max_len)
     if i == -1:
         i = p.rfind('\n', 0, max_len)
@@ -55,58 +55,84 @@ def _split_text(p: str, max_len: int) -> Tuple[str, str]:
 def split_embed(embed: discord.Embed) -> List[discord.Embed]:
     """Split an embed as needed in order to avoid hitting Discord's size limits.
 
-    This function does not account for embed titles or descriptions; only
-    fields. Inline fields that are too long will be made non-inline.
+    Inline fields that are too long will be made non-inline.
     """
-    footer = embed.footer or ''
+    description = embed.description
     empty_embed = discord.Embed(color=embed.color)
     embeds = [discord.Embed(color=embed.color, title=embed.title)]
-    length = len(embed.title)
+    while description:
+        embeds[-1].description, description = _split_text(description, 2048)
+        embeds.append(empty_embed.copy())
+    length = len(embed.title) + len(embed.description)
+    # TODO test handling of description
     field_stack = [{
         'name': field.name.strip(),
         'value': field.value.strip(),
         'inline': field.inline,
+        'continued': False,
     } for field in reversed(embed.fields)]
+    if not field_stack:
+        del embeds[-1]
     while field_stack:
         field = field_stack.pop()
         name = field['name']
         value = field['value']
         if value and len(value) >= MAX_EMBED_VALUE:
             former, latter = _split_text(value, MAX_EMBED_VALUE)
-            latter_name = name
-            if not name.endswith(strings.CONTINUED):
-                latter_name += strings.CONTINUED
             # This is a LIFO stack, so push the latter field first.
             field_stack.append({
-                'name': latter_name,
+                'name': name,
                 'value': latter,
-                'inline': False
+                'inline': False,
+                'continued': True,
             })
             field_stack.append({
                 'name': name,
                 'value': former,
                 'inline': False,
+                'continued': field['continued']
             })
         else:
             field_length = len(name or '') + len(value or '')
             length += field_length
             too_many_fields = len(embeds[-1].fields) >= MAX_EMBED_FIELDS
             # Subtract footer and some extra wiggle room
-            too_big_embed = length >= MAX_EMBED_TOTAL - len(footer) - 10
+            too_big_embed = length >= MAX_EMBED_TOTAL - len(embed.footer) - 10
             if too_many_fields or too_big_embed:
                 embeds.append(empty_embed.copy())
-                length = 0
+                length = field_length
+            if field['continued']:
+                # if embed.fields:
+                #     field['name'] = '\N{ZERO WIDTH SPACE}'
+                # else:
+                    field['name'] += strings.CONTINUED
+            del field['continued']
             embeds[-1].add_field(**field)
     if len(embeds) == 1:
-        embeds[-1].set_footer(text=footer)
+        embeds[0].set_footer(**embed.footer)
+        embeds[0].url = embed.url
+        embeds[0].timestamp = embed.timestamp
     else:
-        if footer:
-            footer += f" ({{}}/{len(embeds)})"
+        if embed.footer:
+            footer_icon_url = embed.footer.icon_url
+            footer_text = embed.footer.text + f" ({{}}/{len(embeds)})"
         else:
-            footer = f"{{}}/{len(embeds)}"
-        for i, embed in enumerate(embeds):
-            embed.set_footer(text=footer.format(i + 1))
+            footer_icon_url = embed.footer
+            footer_text = {'text': f"{{}}/{len(embeds)}"}
+        for i, new_embed in enumerate(embeds):
+            new_embed.set_footer(
+                text=footer_text.format(i + 1),
+                icon_url=footer_icon_url,
+            )
+            new_embed.url = embed.url
+            new_embed.timestamp = embed.timestamp
     return embeds
+
+
+async def send_split_embed(ctx, big_embed):
+    async with ctx.typing():
+        for embed in split_embed(big_embed):
+            await ctx.send(embed=embed)
 
 
 async def get_confirm(ctx, m, timeout=30):
@@ -161,6 +187,19 @@ def sort_users(user_list):
         else:
             return user
     return sorted(user_list, key=key)
+
+
+def print_embed(embed):
+    print()
+    print(f"BEGIN EMBED (length {len(embed)})")
+    for attr in ('title', 'type', 'description', 'url', 'timestamp', 'color'):
+        print(f"  {attr}={getattr(embed, attr)!r}")
+    print("  fields=[")
+    for field in embed.fields:
+        print(repr(field))
+    print("  ]")
+    print("END EMBED")
+    print()
 
 
 class MultiplierConverter(commands.Converter):

@@ -70,7 +70,10 @@ class Bot(commands.Bot):
         successfully loaded; False = not successfully loaded).
         """
         succeeded = {}
-        for extension in get_extensions():
+        disabled_extensions = set()
+        if not info.DEV:
+            disabled_extensions.add('tests')
+        for extension in get_extensions(disabled=disabled_extensions):
             try:
                 if reload or extension not in self.cogs_loaded:
                     self.load_extension(f'cogs.{extension}')
