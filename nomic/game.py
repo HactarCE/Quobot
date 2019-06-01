@@ -4,6 +4,7 @@ from typing import Dict, Optional, Union
 import asyncio
 import discord
 import re
+import threading
 
 from constants import colors, emoji
 from database import get_db
@@ -28,7 +29,7 @@ class Game:
         if do_not_instantiate_directly != 'ok':
             # I'm not sure whether TypeError is really the best choice here.
             raise TypeError("Do not instantiate DB object directly; use get_db() instead")
-        self.lock = asyncio.Lock()
+        self._lock = asyncio.Lock()
         self.guild = guild
         self.db = get_db('guild_' + str(guild.id))
         self.flags = GameFlags(**self.db.get('flags', {}))
@@ -62,11 +63,21 @@ class Game:
         for child in rule.children:
             self._load_rule(rules_dict, child)
 
-    async def save(self) -> None:
-        async with self.lock:
-            self._save()
+    async def __aenter__(self):
+        await self._lock.acquire()
+        self._owned_thread_id = threading.get_ident()
+        return self
 
-    def _save(self) -> None:
+    async def __aexit__(self, exc_type, exc_value, traceback):
+        self._owned_thread_id = None
+        self._lock.release()
+
+    def assert_locked(self):
+        if not self._owned_thread_id == threading.get_ident():
+            raise RuntimeError("Expected {self} to be locked by current thread, but it isn't")
+
+    async def save(self) -> None:
+        self.assert_locked()
         self.db.clear()
         self.db.update(self.export())
         self.db.save()
@@ -99,6 +110,7 @@ class Game:
 
     def record_activity(self, user: discord.abc.User) -> None:
         """Mark a player as being active right now."""
+        self.assert_locked()
         self.player_activity[user] = utils.now()
 
     def get_activity_diff(self, user: discord.abc.User) -> Optional[int]:
@@ -178,10 +190,7 @@ class Game:
 
         May throw `TypeError`, `ValueError`, or `discord.Forbidden` exceptions.
         """
-        async with self.lock:
-            await self._refresh_proposal(self, *ns)
-
-    async def _refresh_proposal(self, *ns: int) -> None:
+        self.assert_locked()
         for n in ns:
             self._check_proposal(n)
         for n in sorted(set(ns)):
@@ -194,7 +203,7 @@ class Game:
                 await m.add_reaction(emoji.VOTE_AGAINST)
                 await m.add_reaction(emoji.VOTE_ABSTAIN)
             except discord.NotFound:
-                self._repost_proposal(n)
+                self.repost_proposal(n)
                 return
 
     async def repost_proposal(self, *ns: int) -> None:
@@ -202,10 +211,7 @@ class Game:
 
         May throw `TypeError`, `ValueError`, or `discord.Forbidden` exceptions.
         """
-        async with self.lock:
-            await self._repost_proposal(self, *ns)
-
-    async def _repost_proposal(self, *ns: int) -> None:
+        self.assert_locked()
         for n in ns:
             self._check_proposal(n)
         proposal_range = range(min(ns), len(self.proposals) + 1)
@@ -223,8 +229,8 @@ class Game:
                 title=f"Preparing proposal #{n}\N{HORIZONTAL ELLIPSIS}",
             ))
             proposal.message_id = m.id
-        self._save()
-        await self._refresh_proposal(*proposal_range)
+        self.save()
+        await self.refresh_proposal(*proposal_range)
 
     async def refresh_rule(self, *tags: str) -> None:
         """Update the messages for one or more rules.
@@ -232,10 +238,7 @@ class Game:
         May throw `KeyError`, `TypeError`, `ValueError`, `discord.NotFound`,
         or `discord.Forbidden` exceptions.
         """
-        async with self.lock:
-            await self._refresh_rule(*tags)
-
-    async def _refresh_rule(self, *tags: str) -> None:
+        self.assert_locked()
         for tag in tags:
             self._check_rule(tag)
         for tag in sorted(set(tags)):
@@ -245,11 +248,12 @@ class Game:
 
     async def repost_rules(self) -> None:
         """Delete and repost the messages for all rules."""
-        with self.lock:
-            await self.rules_channel.delete_messages(*(await self.get_rule_messages()))
-            await self._repost_child_rules(self.root_rule)
+        self.assert_locked()
+        await self.rules_channel.delete_messages(*(await self.get_rule_messages()))
+        await self._repost_child_rules(self.root_rule)
 
     async def _repost_child_rules(self, parent: Rule) -> None:
+        self.assert_locked()
         for rule in parent.children:
             self.rules_channel.send(embed=rule.embed)
             self._repost_child_rules(rule)

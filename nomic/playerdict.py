@@ -1,6 +1,7 @@
 from collections import OrderedDict
 import discord
 
+from utils import l
 import utils
 
 
@@ -21,7 +22,8 @@ class PlayerDict(dict):
         self.get_member = member_getter.get_member
         if not member_values:
             member_values = {}
-        super().__init__({self._to_member(m): v for m, v in member_values.items()})
+        for k, v in member_values.items():
+            self[k] = v
 
     def _to_member(self, m):
         if isinstance(m, discord.Member):
@@ -36,7 +38,10 @@ class PlayerDict(dict):
 
     def __setitem__(self, key, value):
         key = self._to_member(key)
-        return super().__setitem__(key, value)
+        if key:
+            return super().__setitem__(key, value)
+        else:
+            l.warn(f"PlayerDict is unable to convert {key!r} to member; ignoring key-value pair {(key, value)!r}")
 
     def __getitem__(self, key):
         return super().__getitem__(self._to_member(key))

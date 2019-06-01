@@ -22,9 +22,10 @@ class PlayerActivity(commands.Cog):
         # in the last ten minutes.
         diffs = game.activity_diffs
         if user not in diffs or diffs.get(user) > 60 * 10:
-            game.record_activity(user)
-            l.info(f"Recorded activity for {utils.discord.fake_mention(user)!r} on {game.guild.name!r}")
-            await game.save()
+            async with game:
+                game.record_activity(user)
+                l.info(f"Recorded activity for {utils.discord.fake_mention(user)!r} on {game.guild.name!r}")
+                await game.save()
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -144,8 +145,9 @@ class PlayerActivity(commands.Cog):
             ))
             response = await utils.discord.get_confirm(ctx, m)
             if response == 'y':
-                game.flags.player_activity_cutoff = new_cutoff
-                await game.save()
+                async with game:
+                    game.flags.player_activity_cutoff = new_cutoff
+                    await game.save()
             await m.edit(embed=discord.Embed(
                 color=colors.YESNO[response],
                 title=f"Player activity cutoff change {strings.YESNO[response]}",

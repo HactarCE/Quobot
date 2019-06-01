@@ -12,7 +12,7 @@ except ImportError:
 from cogs import get_extensions
 from constants import info
 from utils import l, LOG_SEP
-from utils.error_handling import on_command_error
+import utils
 
 
 LOG_LEVEL_API = logging.WARNING
@@ -46,7 +46,7 @@ class Bot(commands.Bot):
         )
 
     async def on_connect(self):
-        l.info(f"Connected as {self.user}.")
+        l.info(f"Connected as {self.user}")
         await self.change_presence(status=discord.Status.idle)
 
     async def on_ready(self):
@@ -104,7 +104,7 @@ class Bot(commands.Bot):
         await self.process_commands(message)
 
     async def on_command_error(self, exc, *args, **kwargs):
-        await on_command_error(exc, *args, **kwargs)
+        await utils.error_handling.on_command_error(exc, *args, **kwargs)
 
 
 if __name__ == '__main__':

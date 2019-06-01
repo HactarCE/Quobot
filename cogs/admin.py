@@ -53,7 +53,7 @@ class Admin(commands.Cog):
         self.bot = bot
         self.__local_check = utils.discord.is_admin
 
-    @commands.command(aliases=['die', 'q', 'quit'])
+    @commands.command(aliases=['die', 'quit'])
     async def shutdown(self, ctx):
         """Shut down the bot.
 

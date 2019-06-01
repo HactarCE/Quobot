@@ -9,7 +9,7 @@ from utils.discord import embed_field
 
 async def on_command_error(ctx, exc, *args, **kwargs):
     command_name = ctx.command.qualified_name if ctx.command else "unknown command"
-    l.error(f"'{str(exc)}' encountered while executing '{command_name}' (args: {args}; kwargs: {kwargs})")
+    l.error(f"{str(exc)!r} encountered while executing command {command_name!r} (args: {args}; kwargs: {kwargs})")
     if isinstance(exc, commands.UserInputError):
         if isinstance(exc, commands.MissingRequiredArgument):
             description = f"Missing required argument `{exc.param.name}`."

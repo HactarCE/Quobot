@@ -148,3 +148,9 @@ def isinf(value):
 
 def isfinite(value):
     return not (isnan(value) or isinf(value))
+
+
+from . import (
+    discord,
+    error_handling,
+)
