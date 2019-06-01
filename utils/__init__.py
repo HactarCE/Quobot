@@ -151,6 +151,7 @@ def isfinite(value):
 
 
 from . import (
+    commands,
     discord,
     error_handling,
 )
