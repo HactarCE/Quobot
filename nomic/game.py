@@ -42,7 +42,6 @@ class Game:
         self.player_activity = PlayerDict(self, mutget(self.db, 'player_activity', {}))
         channels = mutget(self.db, 'channels', {})
         self.proposals_channel  = guild.get_channel(channels.get('proposals'))
-        self.quantities_channel = guild.get_channel(channels.get('quantities'))
         self.rules_channel      = guild.get_channel(channels.get('rules'))
 
     def _load_rule(self, rules_dict: Dict[str, Dict], tag: str) -> None:
@@ -92,7 +91,6 @@ class Game:
         return OrderedDict(
             channels=OrderedDict(
                 proposals=self.proposals_channel and self.proposals_channel.id,
-                quantities=self.quantities_channel and self.quantities_channel.id,
                 rules=self.rules_channel and self.rules_channel.id,
             ),
             flags=self.flags.export(),
@@ -153,7 +151,7 @@ class Game:
 
     def get_proposal(self, n: int) -> Proposal:
         if self.has_proposal(n):
-            return self.proposals[n]
+            return self.proposals[n - 1]
 
     async def get_proposal_messages(self) -> set:
         messages = set()
@@ -217,7 +215,7 @@ class Game:
                 await m.add_reaction(emoji.VOTE_AGAINST)
                 await m.add_reaction(emoji.VOTE_ABSTAIN)
             except discord.NotFound:
-                self.repost_proposal(n)
+                await self.repost_proposal(n)
                 return
 
     async def repost_proposal(self, *ns: int) -> None:
@@ -232,18 +230,18 @@ class Game:
         proposals = list(map(self.get_proposal, proposal_range))
         proposal_messages = []
         for proposal in proposals:
-            try:
-                proposal_messages.append(await proposal.fetch_message())
-            except discord.NotFound:
-                pass
-        await self.proposals_channel.delete_messages(*proposal_messages)
+            m = await proposal.fetch_message()
+            if m:
+                proposal_messages.append(m)
+        if proposal_messages:
+            await self.proposals_channel.delete_messages(*proposal_messages)
         for n, proposal in zip(proposal_range, proposals):
             m = await self.proposals_channel.send(embed=discord.Embed(
                 color=colors.TEMPORARY,
                 title=f"Preparing proposal #{n}\N{HORIZONTAL ELLIPSIS}",
             ))
             proposal.message_id = m.id
-        self.save()
+        await self.save()
         await self.refresh_proposal(*proposal_range)
 
     async def refresh_rule(self, *tags: str) -> None:

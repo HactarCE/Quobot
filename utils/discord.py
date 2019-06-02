@@ -17,13 +17,11 @@ def fake_mention(user):
     return f"{user.name}#{user.discriminator}"
 
 
-def embed_field(name, value, inline=False):
-    """Make an embed field."""
-    return {
-        'name': name,
-        'value': value,
-        'inline': inline,
-    }
+MESSAGE_LINK_FORMAT = 'https://discordapp.com/channels/{guild.id}/{channel.id}/{message_id}'
+
+
+def get_message_link(message: discord.Message):
+    return MESSAGE_LINK_FORMAT.format(message.guild, message.channel, message.id)
 
 
 def embed_happened_footer(past_participle: str, user: discord.abc.User):
@@ -101,10 +99,7 @@ def split_embed(embed: discord.Embed) -> List[discord.Embed]:
                 embeds.append(empty_embed.copy())
                 length = field_length
             if field['continued']:
-                # if embed.fields:
-                #     field['name'] = '\N{ZERO WIDTH SPACE}'
-                # else:
-                    field['name'] += strings.CONTINUED
+                field['name'] += strings.CONTINUED
             del field['continued']
             embeds[-1].add_field(**field)
     if len(embeds) == 1:
@@ -220,17 +215,3 @@ class MeOrMemberConverter(commands.Converter):
         if argument == 'me':
             return ctx.author
         return await commands.MemberConverter().convert(ctx, argument)
-
-
-class MultiplierConverter(commands.Converter):
-    async def convert(self, ctx, argument):
-        s = argument.lower().strip()
-        try:
-            if s.startswith('x'):
-                return int(s[1:])
-            elif s.endswith('x'):
-                return int(s[:-1])
-            else:
-                return int(s)
-        except ValueError:
-            raise discord.CommandError("Unable to convert to multiplier")

@@ -1,5 +1,5 @@
 from discord.ext import commands
-from typing import List, Optional, Union
+from typing import Optional, Union
 import discord
 import re
 
@@ -163,48 +163,6 @@ class Quantities(commands.Cog):
         await ctx.message.add_reaction(emoji.SUCCESS)
 
     ########################################
-    # CHANNEL COMMANDS
-    ########################################
-
-    @quantities.group('channel', aliases=['chan'])
-    @commands.check(utils.discord.is_admin)
-    async def channel(self, ctx):
-        await utils.commands.desig_chan_show(
-            ctx,
-            "quantities channel",
-            nomic.get_game(ctx).quantities_channel
-        )
-
-    @channel.command('set')
-    async def set_channel(self, ctx, new_channel: discord.TextChannel = None):
-        await utils.commands.desig_chan_set(
-            ctx,
-            "quantities channel",
-            old_channel=nomic.get_game(ctx).quantities_channel,
-            new_channel=new_channel or ctx.channel,
-            callback=self._set_channel_callback,
-        )
-
-    @channel.command('unset', aliases=['reset'])
-    async def unset_channel(self, ctx):
-        await utils.commands.desig_chan_set(
-            ctx,
-            "quantities channel",
-            old_channel=nomic.get_game(ctx).quantities_channel,
-            new_channel=None,
-            callback=self._set_channel_callback,
-        )
-
-    async def _set_channel_callback(self, ctx, new_channel=None):
-        async with nomic.get_game(ctx) as game:
-            game.quantities_channel = new_channel
-            await game.save()
-
-    def _check_quantity(self, quantity: Optional[nomic.Quantity], quantity_name: str):
-        if not quantity:
-            raise commands.UserInputError(f"No such quantity {quantity_name!r}.")
-
-    ########################################
     # TRANSACTION COMMANDS
     ########################################
 
@@ -271,6 +229,10 @@ class Quantities(commands.Cog):
             title=f"Transaction {strings.YESNO[response]}",
             description=description
         ))
+
+    def _check_quantity(self, quantity: Optional[nomic.Quantity], quantity_name: str):
+        if not quantity:
+            raise commands.UserInputError(f"No such quantity {quantity_name!r}.")
 
 
 def setup(bot):

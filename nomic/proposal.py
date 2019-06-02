@@ -57,6 +57,7 @@ class Proposal(_Proposal):
         # if isinstance(self.message_id, discord.Message):
         #     self.message_id = self.message_id.id
         self.votes = PlayerDict(self.game, self.votes)
+        self.status = ProposalStatus(self.status)
         if self.timestamp is None:
             self.timestamp = utils.now()
 
@@ -71,8 +72,31 @@ class Proposal(_Proposal):
             timestamp=self.timestamp,
         )
 
+    @property
+    def votes_for(self) -> int:
+        return sum(v for v in self.votes if v > 0)
+
+    @property
+    def votes_against(self) -> int:
+        return -sum(v for v in self.votes if v < 0)
+
+    @property
+    def votes_abstain(self) -> int:
+        return sum(v == 0 for v in self.votes)
+
     async def fetch_message(self) -> discord.Message:
-        return await self.game.proposals_channel.fetch_message(self.message_id)
+        try:
+            return await self.game.proposals_channel.fetch_message(self.message_id)
+        except (discord.NotFound, discord.Forbidden, discord.HTTPException):
+            return None
+
+    @property
+    def discord_link(self) -> str:
+        return utils.discord.MESSAGE_LINK_FORMAT.format(
+            guild=self.game.guild,
+            channel=self.game.proposals_channel,
+            message_id=self.message_id,
+        )
 
     @property
     def embed(self) -> discord.Embed:
@@ -83,36 +107,11 @@ class Proposal(_Proposal):
             self.title += "   \N{EM DASH}   "
             self.title += self.status.value.capitalize()
         if self.status == ProposalStatus.DELETED:
-            return utils.make_embed(
+            return discord.Embed(
                 color=colors.DELETED,
                 title=title,
             )
-        # Make an embed field for each type of vote
-        field_titles = {k: k.capitalize() for k in VOTE_TYPES}
-        field_lines = {k: '' for k in VOTE_TYPES}
-        totals = {k: 0 for k in VOTE_TYPES}
-        # Count the votes
-        for player, vote_amount in self.votes.sorted_items():
-            line = player.mention
-            if vote_amount > 0:
-                vote_type = 'for'
-            elif vote_amount < 0:
-                vote_type = 'against'
-            else:
-                vote_type = 'abstain'
-            if abs(vote_amount) > 1:
-                line += f" ({abs(vote_amount)}x)"
-            totals[vote_type] += abs(vote_amount) or 1
-            field_lines[vote_type] += line + '\n'
-        for vote_type in VOTE_TYPES:
-            field_lines[vote_type] or strings.EMPTY_LIST
-            if totals:
-                field_titles[vote_type] += f" ({totals[vote_type]})"
-        # Make the fields
-        fields = [(field_titles[k], field_lines[k], True) for k in VOTE_TYPES]
-        timestamp_str = datetime.fromtimestamp(self.timestamp).strftime(utils.TIME_FORMAT)
-        footer = f"Submitted at {timestamp_str} by {self.author.name}#{self.author.discriminator}"
-        return utils.make_embed(
+        embed = discord.Embed(
             color={
                 ProposalStatus.VOTING: colors.INFO,
                 ProposalStatus.PASSED: colors.SUCCESS,
@@ -120,6 +119,37 @@ class Proposal(_Proposal):
             }[self.status],
             title=title,
             description=self.content,
-            fields=fields,
-            footer_text=footer,
+            timestamp=datetime.fromtimestamp(self.timestamp),
         )
+        # Make an embed field for each type of vote
+        for vote_type in VOTE_TYPES:
+            total = 0
+            value = ''
+            # Count the votes and list the users
+            for player, vote_amount in self.votes.items():
+                vote_amount = 0
+                if vote_type == 'for' and vote_amount > 0:
+                    pass
+                elif vote_type == 'against' and vote_amount < 0:
+                    vote_amount *= -1
+                elif vote_type == 'abstain' and vote_amount == 0:
+                    vote_amount = 1
+                if vote_amount:
+                    value += player.mention
+                    if vote_amount > 1:
+                        value += f" ({vote_amount}x)"
+                    value += "\n"
+                    total += vote_amount
+            name = vote_type.capitalize()
+            if total:
+                name += f" ({total})"
+            if vote_type == 'abstain' and total == 0:
+                continue
+            embed.add_field(
+                name=name,
+                value=value or strings.EMPTY_LIST,
+                inline=True,
+            )
+        # Set the footer
+        embed.set_footer(**utils.discord.embed_happened_footer("Submitted", self.author))
+        return embed

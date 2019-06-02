@@ -4,7 +4,6 @@ import traceback
 
 from . import l
 from constants import colors, info
-from utils.discord import embed_field
 
 
 async def on_command_error(ctx, exc, *args, **kwargs):

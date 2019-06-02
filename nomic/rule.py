@@ -5,6 +5,7 @@ import discord
 import re
 
 from constants import colors
+import utils
 
 
 @dataclass
@@ -77,7 +78,11 @@ class Rule(_Rule):
 
     @property
     def discord_link(self) -> str:
-        return 'https://discordapp.com/channels/{self.game.guild.id}/{self.game.rules_channel.id}/{self.message_id}'
+        return utils.discord.MESSAGE_LINK_FORMAT.format(
+            guild=self.game.guild,
+            channel=self.game.rules_channel,
+            message_id=self.message_ids[0],
+        )
 
     def _link_sub(self, format_string: str, content: str = None) -> str:
         """Replace rule tag links with Markdown links of a given format.
