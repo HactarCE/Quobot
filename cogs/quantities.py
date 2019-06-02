@@ -162,7 +162,6 @@ class Quantities(commands.Cog):
             game.save()
         await ctx.message.add_reaction(emoji.SUCCESS)
 
-
     ########################################
     # CHANNEL COMMANDS
     ########################################
@@ -205,6 +204,10 @@ class Quantities(commands.Cog):
         if not quantity:
             raise commands.UserInputError(f"No such quantity {quantity_name!r}.")
 
+    ########################################
+    # TRANSACTION COMMANDS
+    ########################################
+
     @quantities.command('give', aliases=['+', 'inc', 'increase'], rest_is_raw=True)
     async def transact_give(self, ctx, amount: Union[int, float], quantity_name: str, user: utils.discord.MeOrMemberConverter(), *, reason: str = ''):
         """Increase the value a quantity for a player or role."""
@@ -232,12 +235,12 @@ class Quantities(commands.Cog):
         await self.transact(ctx, amount, quantity_name, user, reason=reason)
 
     @commands.command('give', aliases=['+'])
-    async def plus(self, ctx, amount: Union[int, float], quantity_name: str, user: utils.discord.MeOrMemberConverter(), *, reason: str = ''):
+    async def give(self, ctx, amount: Union[int, float], quantity_name: str, user: utils.discord.MeOrMemberConverter(), *, reason: str = ''):
         """See `quantity give`."""
         await self.transact(ctx, amount, quantity_name, user, reason=reason)
 
     @commands.command('take', aliases=['-'])
-    async def minus(self, ctx, amount: Union[int, float], quantity_name: str, user: utils.discord.MeOrMemberConverter(), *, reason: str = ''):
+    async def take(self, ctx, amount: Union[int, float], quantity_name: str, user: utils.discord.MeOrMemberConverter(), *, reason: str = ''):
         """See `quantity take`."""
         await self.transact(ctx, -abs(amount), quantity_name, user, reason=reason)
 
