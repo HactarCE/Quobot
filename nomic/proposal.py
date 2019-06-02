@@ -6,7 +6,7 @@ from typing import Optional
 import discord
 
 from .playerdict import PlayerDict
-from constants import colors
+from constants import colors, strings
 import utils
 
 
@@ -105,7 +105,7 @@ class Proposal(_Proposal):
             totals[vote_type] += abs(vote_amount) or 1
             field_lines[vote_type] += line + '\n'
         for vote_type in VOTE_TYPES:
-            field_lines[vote_type] or "(none)"
+            field_lines[vote_type] or strings.EMPTY_LIST
             if totals:
                 field_titles[vote_type] += f" ({totals[vote_type]})"
         # Make the fields
@@ -123,5 +123,3 @@ class Proposal(_Proposal):
             fields=fields,
             footer_text=footer,
         )
-
-    # TODO __repr__ and __str__

@@ -1,4 +1,5 @@
-from dataclasses import dataclass
+from collections import OrderedDict
+from dataclasses import dataclass, field
 from typing import List
 
 from .playerdict import PlayerDict
@@ -8,7 +9,7 @@ from .playerdict import PlayerDict
 class _Quantity:
     game: object  # We can't access nomic.game.Game from here.
     name: str
-    aliases: List[str]
+    aliases: List[str] = field(default_factory=list)
     players: PlayerDict = None
 
 
@@ -20,7 +21,7 @@ class Quantity(_Quantity):
     - name -- string
 
     Optional attributes:
-    - aliases -- list of strings
+    - aliases (default []) -- list of strings
     - players (default {}) -- PlayerDict
     """
 
@@ -28,4 +29,20 @@ class Quantity(_Quantity):
         super().__init__(*args, **kwargs)
         self.players = PlayerDict(self.game, self.players)
 
-    # TODO __repr__ and __str__
+    def set(self, player, value):
+        if int(value) == value:
+            value = int(value)
+        if value == 0:
+            del self.players[player]
+        else:
+            self.players[player] = value
+
+    def get(self, player):
+        return self.players.get(player, 0)
+
+    def export(self) -> dict:
+        return OrderedDict(
+            name=self.name,
+            aliases=self.aliases,
+            players=self.players.export(),
+        )

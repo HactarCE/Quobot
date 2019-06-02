@@ -1,5 +1,6 @@
 from collections import OrderedDict
 from datetime import datetime
+from typing import Any, Callable, Iterable, List, Union
 import logging
 
 from constants import strings
@@ -17,7 +18,10 @@ def now():
 TIME_FORMAT = 'UTC %H:%M:%S on %Y-%m-%d'
 
 
-def format_time_interval(timestamp1, timestamp2=0, *, include_seconds=True):
+def format_time_interval(timestamp1: int,
+                         timestamp2: int = 0,
+                         *,
+                         include_seconds: bool = True):
     dt = int(abs(timestamp1 - timestamp2))
     dt, seconds = dt // 60, dt % 60
     dt, minutes = dt // 60, dt % 60
@@ -35,7 +39,7 @@ def format_time_interval(timestamp1, timestamp2=0, *, include_seconds=True):
     return s
 
 
-def format_hours(hours):
+def format_hours(hours: int):
     days, hours = hours // 24, hours % 24
     s = ''
     if days:
@@ -44,7 +48,7 @@ def format_hours(hours):
     return s
 
 
-def human_list(words, oxford_comma=True):
+def human_list(words: Iterable[str], oxford_comma: bool = True):
     words = list(words)
     if len(words) == 0:
         return strings.EMPTY_LIST
@@ -57,20 +61,29 @@ def human_list(words, oxford_comma=True):
     return s
 
 
-def format_discord_color(color):
-    s = color if isinstance(color, str) else color.value
-    return f'#{hex(s)[2:]:0>6}'
+def human_count(count: Union[int, float],
+                singular: str,
+                plural: str,
+                *,
+                include_number_for_singular: bool = True):
+    if count == 1:
+        if include_number_for_singular:
+            return f"1 {singular}"
+        else:
+            return singular
+    else:
+        return f"{count} {plural}"
 
 
-def sort_dict(d, **kwargs):
+def sort_dict(d: dict, **kwargs):
     """Return an OrderedDict with the keys in sorted order.
 
     All extra keyword arguments are passed to sorted().
     """
-    return OrderedDict((k, d[k]) for k in sorted(d))
+    return OrderedDict((k, d[k]) for k in sorted(d, **kwargs))
 
 
-def mutget(d, keys, value=None):
+def mutget(d: dict, keys: Union[List, Any], value=None):
     """Returns the value in a nested dictionary, setting anything undefined to
     new dictionaries except for the last one, which is set to the provided value
     if undefined. Like dict.get(), but mutates the original dictionary and can
@@ -106,7 +119,7 @@ def mutget(d, keys, value=None):
     return d[keys[-1]]
 
 
-def mutset(d, keys, value):
+def mutset(d: dict, keys: Union[List, Any], value):
     """Sets the value in a nested dictionary, setting anything undefined to new
     dictionaries except for the last one, which is set to the provided value.
     Like mutget(), but always sets the last value.
@@ -126,7 +139,7 @@ def mutset(d, keys, value):
     mutget(d, keys[:-1], {})[keys[-1]] = value
 
 
-def lazy_mutget(d, keys, value_lambda):
+def lazy_mutget(d: dict, keys: Union[List, Any], value_lambda: Callable[[], Any]):
     """Like mutget(), but value is a lambda that is only evaluated if there is
     no existing value."""
     d = mutget(d, keys[:-1])

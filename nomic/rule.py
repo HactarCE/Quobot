@@ -9,7 +9,7 @@ from constants import colors
 
 @dataclass
 class _Rule:
-    game: object
+    game: object  # We can't access nomic.game.Game from here.
     tag: str
     title: str
     content: str
@@ -138,5 +138,3 @@ class Rule(_Rule):
     @classmethod
     def get_root(cls, game: object) -> 'Rule':
         return cls(game=game, tag='root', title=None, content=None)
-
-    # TODO __repr__ and __str__

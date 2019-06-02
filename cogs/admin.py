@@ -73,12 +73,11 @@ class Admin(commands.Cog):
         if noconfirm:
             response = 'y'
         else:
-            m = await ctx.send(embed=discord.Embed(
-                color=colors.ASK,
+            m, response = await utils.discord.get_confirm_embed(
+                ctx,
                 title="Shutdown?",
                 description="This action may be difficult to undo without phsyical or remote access to the host machine. Are you sure?",
-            ))
-            response = await utils.discord.get_confirm(ctx, m)
+            )
         if response == 'y':
             title = "Shutting down\N{HORIZONTAL ELLIPSIS}"
         else:

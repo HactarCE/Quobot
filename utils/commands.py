@@ -61,12 +61,11 @@ async def desig_chan_set(ctx: commands.Context,
     else:
         title_verb = "Set"
         description = f"Set the {name} to {new_channel.mention}?"
-    m = await ctx.send(embed=discord.Embed(
-        color=colors.ASK,
+    m, response = await utils.discord.get_confirm_embed(
+        ctx,
         title=f"{title_verb} {name}?",
         description=description,
-    ))
-    response = await utils.discord.get_confirm(ctx, m)
+    )
     if response == 'y':
         if new_channel:
             description = f"The {name} is now {new_channel.mention}."

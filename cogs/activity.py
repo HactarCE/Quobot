@@ -3,8 +3,8 @@ from discord.ext import commands
 import discord
 
 from constants import colors, strings
-from nomic.game import get_game
 from utils import l
+import nomic
 import utils
 
 
@@ -17,7 +17,7 @@ class PlayerActivity(commands.Cog):
         self.bot = bot
 
     async def record_activity(self, ctx, user):
-        game = get_game(ctx)
+        game = nomic.get_game(ctx)
         # Don't bother updating the player activity if they've been active
         # in the last ten minutes.
         diffs = game.activity_diffs
@@ -37,8 +37,8 @@ class PlayerActivity(commands.Cog):
         if not user.bot:
             await self.record_activity(reaction.message.guild, user)
 
-    async def _list_players(self, ctx, users: Iterator[discord.abc.User] = None):
-        game = get_game(ctx)
+    async def _list_players(self, ctx, users: Iterator[discord.abc.User]):
+        game = nomic.get_game(ctx)
         users = set(users)
         users = utils.discord.sort_users(users)
         diffs = game.activity_diffs
@@ -82,9 +82,7 @@ class PlayerActivity(commands.Cog):
                 value=inactive_text,
                 inline=False,
             )
-        embeds = utils.discord.split_embed(embed)
-        for embed in embeds:
-            await ctx.send(embed=embed)
+        await utils.discord.send_split_embed(ctx, embed)
 
     @commands.group('activity')
     async def activity(self, ctx):
@@ -95,18 +93,19 @@ class PlayerActivity(commands.Cog):
     @activity.command('list', aliases=['l', 'ls', 'of'])
     async def active_players_list_all(self, ctx, *users: discord.abc.User):
         """List all tracked players, both active and inactive."""
-        await self._list_players(ctx, users or get_game(ctx).player_activity.keys())
+        game = nomic.get_game(ctx)
+        await self._list_players(ctx, users or game.player_activity.keys())
 
     @activity.command('active')
     async def activity_active(self, ctx):
         """List all active players."""
-        game = get_game(ctx)
+        game = nomic.get_game(ctx)
         await self._list_players(ctx, filter(game.is_active, game.player_activity))
 
     @activity.command('inactive')
     async def activity_inactive(self, ctx):
         """List all inactive players."""
-        game = get_game(ctx)
+        game = nomic.get_game(ctx)
         await self._list_players(ctx, filter(game.is_inactive, game.player_activity))
 
     @commands.command('active')
@@ -125,7 +124,7 @@ class PlayerActivity(commands.Cog):
 
         `new_cutoff_in_hours`, if specified, must be an integer number of hours.
         """
-        game = get_game(ctx)
+        game = nomic.get_game(ctx)
         description = f"The player activity cutoff is currently **{utils.format_hours(game.flags.player_activity_cutoff)}**."
         if new_cutoff_in_hours is None:
             if await utils.discord.is_admin(ctx):
@@ -138,12 +137,11 @@ class PlayerActivity(commands.Cog):
         else:
             new_cutoff = new_cutoff_in_hours
             description += f" Change it to **{utils.format_hours(new_cutoff)}**?"
-            m = await ctx.send(embed=discord.Embed(
-                color=colors.INFO,
+            m, response = await utils.discord.get_confirm_embed(
+                ctx,
                 title="Change player activity cutoff?",
                 description=description,
-            ))
-            response = await utils.discord.get_confirm(ctx, m)
+            )
             if response == 'y':
                 async with game:
                     game.flags.player_activity_cutoff = new_cutoff

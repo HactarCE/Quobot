@@ -34,7 +34,7 @@ class Game:
         self.db = get_db('guild_' + str(guild.id))
         self.flags = GameFlags(**self.db.get('flags', {}))
         self.proposals = [Proposal(game=self, **p) for p in mutget(self.db, 'proposals', [])]
-        self.quantities = {k: Quantity(**q) for k, q in mutget(self.db, 'quantities', {})}
+        self.quantities = {k: Quantity(game=self, **q) for k, q in mutget(self.db, 'quantities', {}).items()}
         self.rules = {}
         self._load_rule(mutget(self.db, 'rules', {
             'root': {'tag': 'root', 'title': None, 'content': None},
@@ -62,6 +62,12 @@ class Game:
         self.rules[tag] = rule
         for child in rule.children:
             self._load_rule(rules_dict, child)
+
+    def __enter__(self):
+        raise RuntimeError("Use 'async with', not plain 'with'")
+
+    def __exit__(self):
+        raise RuntimeError("Use 'async with', not plain 'with'")
 
     async def __aenter__(self):
         await self._lock.acquire()
@@ -154,6 +160,14 @@ class Game:
         for proposal in self.proposals:
             messages.add(await proposal.fetch_message())
         return messages
+
+    def get_quantity(self, name: str) -> Quantity:
+        name = name.lower()
+        if name in self.quantities:
+            return self.quantities[name]
+        for quantity in self.quantities.values():
+            if name in quantity.aliases:
+                return quantity
 
     def _check_rule(self, *tags) -> None:
         for tag in tags:

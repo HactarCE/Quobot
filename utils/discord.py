@@ -1,10 +1,9 @@
-from datetime import datetime
 from discord.ext import commands
 from typing import List, Tuple
 import asyncio
 import discord
 
-from constants import emoji, strings
+from constants import colors, emoji, strings
 
 
 # https://birdie0.github.io/discord-webhooks-guide/other/field_limits.html
@@ -109,7 +108,7 @@ def split_embed(embed: discord.Embed) -> List[discord.Embed]:
             del field['continued']
             embeds[-1].add_field(**field)
     if len(embeds) == 1:
-        embeds[0].set_footer(**embed.footer)
+        embeds[0].set_footer(text=embed.footer.text, icon_url=embed.footer.icon_url)
         embeds[0].url = embed.url
         embeds[0].timestamp = embed.timestamp
     else:
@@ -129,13 +128,19 @@ def split_embed(embed: discord.Embed) -> List[discord.Embed]:
     return embeds
 
 
-async def send_split_embed(ctx, big_embed):
-    async with ctx.typing():
-        for embed in split_embed(big_embed):
+async def send_split_embed(ctx: commands.Context, big_embed: discord.Embed, *, typing: bool = True):
+    embeds = split_embed(big_embed)
+    if typing and len(embeds) > 1:
+        async with ctx.typing():
+            for embed in embeds[:-1]:
+                await ctx.send(embed=embed)
+        await ctx.send(embed=embeds[-1])
+    else:
+        for embed in embeds:
             await ctx.send(embed=embed)
 
 
-async def get_confirm(ctx, m, timeout=30):
+async def get_confirm(ctx, m, *, timeout=30):
     """Recieve a yes/no response to a message via reaction.
 
     Returns 'y' for an affirmative response, 'n' for a negative response, and
@@ -163,6 +168,14 @@ async def get_confirm(ctx, m, timeout=30):
     for e in emojis:
         await m.remove_reaction(e, ctx.me)
     return result
+
+
+async def get_confirm_embed(ctx, *, timeout=30, **kwargs):
+    """Send an embed, call `get_confirm()`, and return a tuple `(message,
+    response)`.
+    """
+    m = await ctx.send(embed=discord.Embed(color=colors.ASK, **kwargs))
+    return (m, await get_confirm(ctx, m, timeout=timeout))
 
 
 async def is_admin(ctx):
@@ -200,6 +213,13 @@ def print_embed(embed):
     print("  ]")
     print("END EMBED")
     print()
+
+
+class MeOrMemberConverter(commands.Converter):
+    async def convert(self, ctx, argument):
+        if argument == 'me':
+            return ctx.author
+        return await commands.MemberConverter().convert(ctx, argument)
 
 
 class MultiplierConverter(commands.Converter):
