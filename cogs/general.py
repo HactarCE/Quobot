@@ -163,6 +163,16 @@ class General(commands.Cog):
             ).set_footer(text=f"{info.NAME} v{info.VERSION}")
         )
 
+    @commands.command('confirm', aliases=['y', 'yes'])
+    async def confirm(self, ctx):
+        """Confirm a pending query."""
+        pass
+
+    @commands.command('cancel', aliases=['n', 'no'])
+    async def cancel(self, ctx):
+        """Cancel a pending query."""
+        pass
+
 
 def setup(bot):
     bot.add_cog(General(bot))

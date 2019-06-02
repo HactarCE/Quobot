@@ -1,5 +1,5 @@
 from discord.ext import commands
-from typing import List, Tuple
+from typing import Callable, List, Tuple
 import asyncio
 import discord
 
@@ -135,42 +135,147 @@ async def send_split_embed(ctx: commands.Context, big_embed: discord.Embed, *, t
             await ctx.send(embed=embed)
 
 
+async def wait_for_response(ctx: commands.Context,
+                            m: discord.Message,
+                            message_check: Callable[[discord.Message], bool],
+                            reaction_check: Callable[[discord.Reaction, discord.abc.User], bool],
+                            *,
+                            timeout: int):
+    """Wait for either a reaction to m by ctx.author or a message by ctx.author
+    in the same channel as m.
+
+    Returns a tuple (response_type, response), where response_type is either
+    'message' or 'reaction' and response is the discord.Message or
+    discord.Reaction object itself.
+
+    Throws asyncio.TimeoutError if a timeout occurs.
+    """
+    pending = ()
+    try:
+        # Wait for either ...
+        done, pending = await asyncio.wait([
+            # ... a message containing, e.g. '!y', ...
+            ctx.bot.wait_for(
+                'message',
+                check=lambda msg: (
+                    msg.channel == ctx.channel
+                    and msg.author == ctx.author
+                    and message_check(msg)
+                ),
+                timeout=timeout,
+            ),
+            # ... or a reaction.
+            ctx.bot.wait_for(
+                'reaction_add',
+                check=lambda reaction, user: (
+                    reaction.message.id == m.id
+                    and user == ctx.author
+                    and reaction_check(reaction, user)
+                ),
+                timeout=timeout,
+            )
+        ], return_when=asyncio.FIRST_COMPLETED)
+        result = done.pop().result()
+        if isinstance(result, discord.Message):
+            return 'message', result
+        else:
+            return 'reaction', result[0]
+    finally:
+        # Cancel anything that didn't complete.
+        for future in pending:
+            future.cancel()
+
+
+class TransientMessageReact:
+    """An async context manager that places emojis on a message and then removes
+    them at the end."""
+
+    def __init__(self, m, emojis):
+        self.m = m
+        self.emojis = emojis
+
+    async def __aenter__(self):
+        for e in self.emojis:
+            await self.m.add_reaction(e)
+
+    async def __aexit__(self, exc_type, exc, tb):
+        for e in self.emojis:
+            await self.m.remove_reaction(e, self.m.guild.me)
+
+
 async def get_confirm(ctx, m, *, timeout=30):
-    """Recieve a yes/no response to a message via reaction.
+    """Recieve a yes/no response to a message via reaction or a message.
 
     Returns 'y' for an affirmative response, 'n' for a negative response, and
-    't' for a timeout."""
-    # TODO Allow user to type '!confirm'/'!y' or '!cancel'/'!n' in addition to reactions
+    't' for a timeout.
+    """
     emojis = [emoji.CONFIRM, emoji.CANCEL]
-    for e in emojis:
-        await m.add_reaction(e)
-    try:
-        reaction, _ = await ctx.bot.wait_for(
-            'reaction_add',
-            check=lambda reaction, user: (
-                reaction.emoji in emojis
-                and reaction.message.id == m.id
-                and user == ctx.author
-            ),
-            timeout=timeout,
-        )
-        result = {
-            emoji.CONFIRM: 'y',
-            emoji.CANCEL: 'n',
-        }[reaction.emoji]
-    except asyncio.TimeoutError:
-        result = 't'
-    for e in emojis:
-        await m.remove_reaction(e, ctx.me)
-    return result
+    async with TransientMessageReact(m, emojis):
+        try:
+            response_type, response = await wait_for_response(
+                ctx,
+                m,
+                lambda msg: msg.content in strings.CONFIRM_MSGS + strings.CANCEL_MSGS,
+                lambda reaction, user: reaction.emoji in emojis,
+                timeout=timeout
+            )
+            if response_type == 'message':
+                return 'y' if response.content in strings.CONFIRM_MSGS else 'n'
+            if response_type == 'reaction':
+                return 'y' if response.emoji == emoji.CONFIRM else 'n'
+        except asyncio.TimeoutError:
+            return 't'
 
 
 async def get_confirm_embed(ctx, *, timeout=30, **kwargs):
-    """Send an embed, call `get_confirm()`, and return a tuple `(message,
-    response)`.
+    """Send an embed and call `get_confirm()`.
+
+    Returns a tuple (message, response).
+
+    All keyword arguments (besides timeout) are passed to discord.Embed().
     """
     m = await ctx.send(embed=discord.Embed(color=colors.ASK, **kwargs))
     return (m, await get_confirm(ctx, m, timeout=timeout))
+
+
+async def query_content(ctx, *, timeout=30, **kwargs):
+    """Send an embed and query the user for content.
+
+    Returns a tuple (message, response, content), where response is 'y', 'n', or
+    't', and content is either a string (if response == 'y') or None.
+
+    All keyword arguments (besides timeout) are passed to discord.Embed().
+    """
+    m = await ctx.send(embed=discord.Embed(color=colors.ASK, **kwargs))
+    async with TransientMessageReact(m, emoji.CANCEL):
+        try:
+            response_type, response = await wait_for_response(
+                ctx,
+                m,
+                lambda msg: True,
+                lambda reaction, user: reaction.emoji == emoji.CANCEL,
+                timeout=timeout,
+            )
+            if response_type == 'message':
+                content = response.content.strip()
+            if (response_type == 'reaction' or content in strings.CANCEL_COMMANDS or not content):
+                return m, 'n', None
+            return m, 'y', content
+        except asyncio.TimeoutError:
+            return m, 't', None
+
+
+async def edit_embed_for_response(m, response, *, title_format, **kwargs):
+    """Edit a message, changing the color and title according to a user response
+    (either 'y', 'n', or 't').
+
+    All keyword arguments (besides title_format) are passed to discord.Embed().
+    """
+    await m.edit(embed=discord.Embed(
+        color=colors.YESNO[response],
+        title=title_format.format(strings.YESNO[response]),
+        **kwargs
+    ))
 
 
 async def is_admin(ctx):

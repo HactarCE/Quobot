@@ -91,7 +91,7 @@ class Admin(commands.Cog):
             title=title
         ))
         if response == 'y':
-            l.info(f"Shutting down at the command of {ctx.author.display_name}...")
+            l.info(f"Shutting down at the command of {utils.discord.fake_mention(ctx.author)}...")
             await self.bot.logout()
 
     @commands.command()
