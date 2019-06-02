@@ -1,4 +1,3 @@
-from collections import OrderedDict
 import discord
 
 from utils import l

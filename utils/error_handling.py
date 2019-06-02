@@ -89,8 +89,6 @@ async def log_error(ctx, exc, *args, **kwargs):
                 name="Message content",
                 value=f"{ctx.message.content}",
             )
-        else:
-            fields = []
         tb = ''.join(traceback.format_tb(exc.__traceback__))
         tb = f"```\n{tb.replace('```', '` ` `')}"
         if len(tb) > 1000:
