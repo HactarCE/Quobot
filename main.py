@@ -80,8 +80,8 @@ class Bot(commands.Bot):
                     l.info(f"Loaded extension '{extension}'")
                     self.cogs_loaded.add(extension)
                     succeeded[extension] = True
-            except Exception as e:
-                l.error(f"Failed to load extension {extension!r} due to {type(e).__name__}: {e}")
+            except Exception as exc:
+                l.error(f"Failed to load extension {extension!r} due to {type(exc).__name__}: {exc}")
                 succeeded[extension] = False
         if succeeded:
             l.info(LOG_SEP)

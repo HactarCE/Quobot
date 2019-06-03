@@ -17,6 +17,18 @@ class ProposalStatus(Enum):
     DELETED = 'deleted'
 
 
+VOTE_ALIASES = {
+    '+': 'for',
+    '-': 'against',
+    'abstain': 'abstain',
+    'against': 'against',
+    'del': 'remove',
+    'delete': 'remove',
+    'for': 'for',
+    'remove': 'remove',
+    'rm': 'remove',
+}
+
 VOTE_TYPES = ('for', 'against', 'abstain')
 
 
@@ -24,7 +36,7 @@ VOTE_TYPES = ('for', 'against', 'abstain')
 class _Proposal:
     game: object  # We can't access nomic.game.Game from here.
     n: int
-    author: discord.User
+    author: discord.Member
     content: str
     status: ProposalStatus = ProposalStatus.VOTING
     message_id: Optional[int] = None
@@ -38,7 +50,7 @@ class Proposal(_Proposal):
     Attributes:
     - game
     - n -- integer; proposal ID number
-    - author -- discord.User
+    - author -- discord.Member
     - content -- string
 
     Optional attributes:
@@ -52,7 +64,7 @@ class Proposal(_Proposal):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if not isinstance(self.author, discord.User):
+        if not isinstance(self.author, discord.Member):
             self.author = self.game.get_member(self.author)
         # if isinstance(self.message_id, discord.Message):
         #     self.message_id = self.message_id.id
@@ -72,17 +84,53 @@ class Proposal(_Proposal):
             timestamp=self.timestamp,
         )
 
+    def vote(self, member, vote_type: str, amount: int = 1) -> bool:
+        """Vote on a proposal and return True if succeeded."""
+        # TODO: there's got to be a way to make this nicer
+        if self.status != ProposalStatus.VOTING:
+            return False
+        old_amount = self.votes.get(member)
+        if vote_type == 'for':
+            new_amount = (old_amount or 0) + amount
+        elif vote_type == 'against':
+            new_amount = (old_amount or 0) - amount
+        elif vote_type == 'abstain':
+            if old_amount is None:
+                new_amount = 0
+            else:
+                vote_type = 'remove'
+        if vote_type in ('for', 'against') and new_amount == 0:
+            vote_type = 'remove'
+        if vote_type == 'remove':
+            new_amount = None
+        if vote_type == 'remove':
+            if member in self.votes:
+                del self.votes[member]
+            else:
+                return False
+        elif vote_type == 'abstain' and not self.game.flags.allow_vote_abstain:
+            return False
+        elif old_amount is not None and not self.game.flags.allow_vote_change:
+            return False
+        elif new_amount and abs(new_amount) > 1 and not self.game.flags.allow_vote_multi:
+            return False
+        elif old_amount == new_amount:
+            return False
+        else:
+            self.votes[member] = new_amount
+        return True
+
     @property
     def votes_for(self) -> int:
-        return sum(v for v in self.votes if v > 0)
+        return sum(v for v in self.votes.values() if v > 0)
 
     @property
     def votes_against(self) -> int:
-        return -sum(v for v in self.votes if v < 0)
+        return -sum(v for v in self.votes.values() if v < 0)
 
     @property
     def votes_abstain(self) -> int:
-        return sum(v == 0 for v in self.votes)
+        return sum(v == 0 for v in self.votes.values())
 
     async def fetch_message(self) -> discord.Message:
         try:
@@ -127,19 +175,22 @@ class Proposal(_Proposal):
             value = ''
             # Count the votes and list the users
             for player, vote_amount in self.votes.items():
-                vote_amount = 0
-                if vote_type == 'for' and vote_amount > 0:
-                    pass
-                elif vote_type == 'against' and vote_amount < 0:
+                if vote_type == 'for':
+                    if vote_amount <= 0:
+                        continue
+                elif vote_type == 'against':
+                    if vote_amount >= 0:
+                        continue
                     vote_amount *= -1
-                elif vote_type == 'abstain' and vote_amount == 0:
+                elif vote_type == 'abstain':
+                    if vote_amount != 0:
+                        continue
                     vote_amount = 1
-                if vote_amount:
-                    value += player.mention
-                    if vote_amount > 1:
-                        value += f" ({vote_amount}x)"
-                    value += "\n"
-                    total += vote_amount
+                value += player.mention
+                if vote_amount > 1:
+                    value += f" ({vote_amount}x)"
+                value += "\n"
+                total += vote_amount
             name = vote_type.capitalize()
             if total:
                 name += f" ({total})"

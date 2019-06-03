@@ -111,8 +111,8 @@ def split_embed(embed: discord.Embed) -> List[discord.Embed]:
             footer_icon_url = embed.footer.icon_url
             footer_text = embed.footer.text + f" ({{}}/{len(embeds)})"
         else:
-            footer_icon_url = embed.footer
-            footer_text = {'text': f"{{}}/{len(embeds)}"}
+            footer_icon_url = embed.footer.icon_url
+            footer_text = f"{{}}/{len(embeds)}"
         for i, new_embed in enumerate(embeds):
             new_embed.set_footer(
                 text=footer_text.format(i + 1),
@@ -320,3 +320,17 @@ class MeOrMemberConverter(commands.Converter):
         if argument == 'me':
             return ctx.author
         return await commands.MemberConverter().convert(ctx, argument)
+
+
+class MultiplierConverter(commands.Converter):
+    async def convert(self, ctx, argument):
+        s = argument.lower().strip()
+        try:
+            if s.startswith('x'):
+                return int(s[1:])
+            elif s.endswith('x'):
+                return int(s[:-1])
+            else:
+                return int(s)
+        except Exception:
+            raise discord.CommandError("Unable to convert to multiplier")

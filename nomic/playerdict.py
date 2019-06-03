@@ -15,8 +15,8 @@ class PlayerDict(dict):
           instance of discord.Guild)
 
         Optional arguments:
-        - member_values -- dict mapping discord.Users or user IDs to any other
-          value
+        - member_values -- dict mapping discord.abc.Users or user IDs to any
+          other value
         """
         self.get_member = member_getter.get_member
         if not member_values:
