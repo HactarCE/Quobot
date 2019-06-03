@@ -95,10 +95,10 @@ class Game:
             ),
             flags=self.flags.export(),
             player_activity=self.player_activity.export(),
+            proposals=[p.export() for p in self.proposals],
             quantities=utils.sort_dict(
                 {k: q.export() for k, q in self.quantities.items()}
             ),
-            proposals=[p.export() for p in self.proposals],
             rules=utils.sort_dict(
                 {k: r.export() for k, r in self.rules.items()}
             ),

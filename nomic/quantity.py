@@ -43,6 +43,6 @@ class Quantity(_Quantity):
     def export(self) -> dict:
         return OrderedDict(
             name=self.name,
-            aliases=self.aliases,
+            aliases=sorted(self.aliases),
             players=self.players.export(),
         )

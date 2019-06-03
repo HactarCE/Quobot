@@ -9,6 +9,14 @@ import nomic
 import utils
 
 
+class QuantityConverter(commands.Converter):
+    async def convert(self, ctx, argument):
+        quantity = nomic.get_game(ctx).get_quantity(argument)
+        if quantity:
+            return quantity
+        raise commands.UserInputError(f"No quantity named {argument!r}")
+
+
 class Quantities(commands.Cog):
     """Commands pertaining to quantities/currencies and transactions."""
 
@@ -50,18 +58,17 @@ class Quantities(commands.Cog):
         ))
 
     @quantities.command('info', aliases=['i'])
-    async def quantity_info(self, ctx, *quantity_names: str):
+    async def quantity_info(self, ctx, *quantities: QuantityConverter()):
         """List each player's values for a given quantity"""
         game = nomic.get_game(ctx)
         embed = discord.Embed(color=colors.INFO)
-        if not quantity_names:
-            quantity_names = game.quantities.keys()
-        quantity_names = sorted(set(quantity_names))
-        if len(quantity_names) > 1:
+        if not quantities:
+            quantities = game.quantities.values()
+        quantity_names = sorted(set(q.name for q in quantities))
+        quantities = [game.get_quantity(name) for name in quantity_names]
+        if len(quantities) > 1:
             embed.title = "Quantities"
-        for quantity_name in quantity_names:
-            quantity = game.get_quantity(quantity_name)
-            self._check_quantity(quantity, quantity_name)
+        for quantity in quantities:
             value = ''
             for member, amount in quantity.players.sorted_items():
                 value += f"{member.mention} has **{amount}**\n"
@@ -102,11 +109,9 @@ class Quantities(commands.Cog):
 
     @quantities.command('remove', aliases=['del', 'delete', 'rm'])
     @commands.check(utils.discord.is_admin)
-    async def remove_quantity(self, ctx, quantity_name: str):
+    async def remove_quantity(self, ctx, quantity: QuantityConverter()):
         """Delete a quantity."""
         game = nomic.get_game(ctx)
-        quantity = game.get_quantity(quantity_name)
-        self._check_quantity(quantity, quantity_name)
         m, response = await utils.discord.get_confirm_embed(
             ctx,
             title=f"Delete quantity {quantity.name!r}?",
@@ -123,38 +128,34 @@ class Quantities(commands.Cog):
 
     @quantities.command('rename', aliases=['setname'])
     @commands.check(utils.discord.is_admin)
-    async def rename_quantity(self, ctx, quantity_name: str, new_quantity_name: str):
+    async def rename_quantity(self, ctx, quantity: QuantityConverter(), new_name: str):
         """Rename a quantity."""
         game = nomic.get_game(ctx)
-        quantity = game.get_quantity(quantity_name)
-        self._check_quantity(quantity, quantity_name)
-        self._check_quantity_names(game, new_quantity_name)
+        self._check_quantity_names(game, new_name)
         m, response = await utils.discord.get_confirm_embed(
             ctx,
-            title=f"Rename quantity {quantity.name!r} to {new_quantity_name!r}?",
+            title=f"Rename quantity {quantity.name!r} to {new_name!r}?",
         )
         if response == 'y':
             async with game:
-                game.quantities[new_quantity_name] = quantity
                 del game.quantities[quantity.name]
+                quantity.name = new_name
+                game.quantities[new_name] = quantity
+                await game.save()
         await m.edit(embed=discord.Embed(
             color=colors.YESNO[response],
             title=f"Renaming of quantity {quantity.name!r} {strings.YESNO[response]}",
         ))
 
-    @quantities.command('setaliases')
+    @quantities.command('setaliases', aliases=['setalias'])
     @commands.check(utils.discord.is_admin)
-    async def set_quantity_aliases(self, ctx,
-                                   quantity_name: str,
-                                   *new_aliases: str):
+    async def set_quantity_aliases(self, ctx, quantity: QuantityConverter(), *new_aliases: str):
         """Change a quantity's aliases."""
         game = nomic.get_game(ctx)
-        quantity = game.get_quantity(quantity_name)
-        self._check_quantity(quantity, quantity_name)
         self._check_quantity_names(game, new_aliases, quantity)
         async with game:
             quantity.aliases = new_aliases
-            game.save()
+            await game.save()
         await ctx.message.add_reaction(emoji.SUCCESS)
 
     ########################################
@@ -164,70 +165,62 @@ class Quantities(commands.Cog):
     @quantities.command('give', aliases=['+', 'inc', 'increase'], rest_is_raw=True)
     async def transact_give(self, ctx,
                             amount: Union[int, float],
-                            quantity_name: str,
+                            quantity: QuantityConverter(),
                             user: utils.discord.MeOrMemberConverter(),
                             *, reason: str = ''):
         """Increase the value a quantity for a player or role."""
-        await self.transact(ctx, amount, quantity_name, user, reason=reason)
+        await self.transact(ctx, amount, quantity, user, reason=reason)
 
     @quantities.command('take', aliases=['-', 'dec', 'decrease'], rest_is_raw=True)
     async def transact_take(self, ctx,
                             amount: Union[int, float],
-                            quantity_name: str,
+                            quantity: QuantityConverter(),
                             user: utils.discord.MeOrMemberConverter(),
                             *, reason: str = ''):
         """Decrease the value a quantity for a player or role."""
-        await self.transact(ctx, -abs(amount), quantity_name, user, reason=reason)
+        await self.transact(ctx, -abs(amount), quantity, user, reason=reason)
 
     @quantities.command('reset', aliases=['=0'])
     async def transact_reset(self, ctx,
-                             quantity_name: str,
+                             quantity: QuantityConverter(),
                              user: utils.discord.MeOrMemberConverter(),
                              *, reason: str = ''):
         """Reset the value of a quantity for a player or role to ."""
-        quantity = nomic.get_game(ctx).get_quantity(quantity_name)
-        self._check_quantity(quantity, quantity_name)
-        amount = -quantity.get(user)
-        await self.transact(ctx, amount, quantity_name, user, reason=reason)
+        await self.transact(ctx, -quantity.get(user), quantity, user, reason=reason)
 
     @quantities.command('set', aliases=['='])
     async def transact_set(self, ctx,
                            amount: Union[int, float],
-                           quantity_name: str,
+                           quantity: QuantityConverter(),
                            user: utils.discord.MeOrMemberConverter(),
                            *, reason: str = ''):
         """Set the value of a quantity for a player or role."""
-        quantity = nomic.get_game(ctx).get_quantity(quantity_name)
-        self._check_quantity(quantity, quantity_name)
-        amount = amount - quantity.get(user)
-        await self.transact(ctx, amount, quantity_name, user, reason=reason)
+        await self.transact(ctx, amount, amount - quantity.get(user), user, reason=reason)
 
     @commands.command('give', aliases=['+'])
     async def give(self, ctx,
                    amount: Union[int, float],
-                   quantity_name: str,
+                   quantity: QuantityConverter(),
                    user: utils.discord.MeOrMemberConverter(),
                    *, reason: str = ''):
         """See `quantity give`."""
-        await self.transact(ctx, amount, quantity_name, user, reason=reason)
+        await self.transact(ctx, amount, quantity, user, reason=reason)
 
     @commands.command('take', aliases=['-'])
     async def take(self, ctx,
                    amount: Union[int, float],
-                   quantity_name: str,
+                   quantity: QuantityConverter(),
                    user: utils.discord.MeOrMemberConverter(),
                    *, reason: str = ''):
         """See `quantity take`."""
-        await self.transact(ctx, -abs(amount), quantity_name, user, reason=reason)
+        await self.transact(ctx, -abs(amount), quantity, user, reason=reason)
 
     async def transact(self, ctx,
                        amount: Union[int, float],
-                       quantity_name: str,
+                       quantity: QuantityConverter(),
                        user: utils.discord.MeOrMemberConverter(),
                        *, reason: str = ''):
         game = nomic.get_game(ctx)
-        quantity = game.get_quantity(quantity_name)
-        self._check_quantity(quantity, quantity_name)
         positive = amount >= 0
         new_amount = quantity.get(user) + amount
         description = f"**{'+' if positive else '-'}{abs(amount)} {quantity.name}**"
@@ -252,16 +245,9 @@ class Quantities(commands.Cog):
             description=description
         ))
 
-    def _check_quantity(self,
-                        quantity: Optional[nomic.Quantity],
-                        quantity_name: str):
-        if not quantity:
-            raise commands.UserInputError(f"No such quantity {quantity_name!r}.")
-
     def _check_quantity_names(self,
                               game: nomic.Game,
-                              names: Union[str,
-                              Iterable[str]],
+                              names: Union[str, Iterable[str]],
                               ignore_quantity: nomic.Quantity = None):
         if isinstance(names, str):
             names = [names]
@@ -270,8 +256,9 @@ class Quantities(commands.Cog):
                 raise commands.UserInputError(f"Quantity name {name!r} is too long")
             if not re.match(r'[a-z][0-9a-z\-_]+', name):
                 raise commands.UserInputError(f"Quantity name {name!r} is invalid; quantity names and aliases may only contain lowercase letters, numbers, hyphens, or underscores, and must begin with a lowercase letter")
-            if ignore_quantity and name not in ignore_quantity.aliases:
-                raise commands.UserInputError(f"Quantity name {name!r} is already in use")
+            if not (ignore_quantity and name in ignore_quantity.aliases):
+                if game.get_quantity(name):
+                    raise commands.UserInputError(f"Quantity name {name!r} is already in use")
 
 
 def setup(bot):
