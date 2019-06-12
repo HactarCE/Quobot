@@ -1,5 +1,5 @@
 from discord.ext import commands
-from typing import Iterable, Optional, Union
+from typing import Iterable, Union
 import discord
 import re
 
@@ -11,7 +11,7 @@ import utils
 
 class QuantityConverter(commands.Converter):
     async def convert(self, ctx, argument):
-        quantity = nomic.get_game(ctx).get_quantity(argument)
+        quantity = nomic.Game(ctx).get_quantity(argument)
         if quantity:
             return quantity
         raise commands.UserInputError(f"No quantity named {argument!r}")
@@ -39,7 +39,7 @@ class Quantities(commands.Cog):
 
         If a user is supplied, list that user's value for each quantity.
         """
-        game = nomic.get_game(ctx)
+        game = nomic.Game(ctx)
         title = "Quantities"
         if user:
             title += f" ({utils.discord.fake_mention(user)})"
@@ -60,7 +60,7 @@ class Quantities(commands.Cog):
     @quantities.command('info', aliases=['i'])
     async def quantity_info(self, ctx, *quantities: QuantityConverter()):
         """List each player's values for a given quantity"""
-        game = nomic.get_game(ctx)
+        game = nomic.Game(ctx)
         embed = discord.Embed(color=colors.INFO)
         if not quantities:
             quantities = game.quantities.values()
@@ -83,7 +83,7 @@ class Quantities(commands.Cog):
     @commands.check(utils.discord.is_admin)
     async def add_quantity(self, ctx, quantity_name: str, *aliases: str):
         """Create a new quantity."""
-        game = nomic.get_game(ctx)
+        game = nomic.Game(ctx)
         quantity_name = quantity_name.lower()
         aliases = [s.lower() for s in aliases]
         self._check_quantity_names(game, [quantity_name] + aliases)
@@ -95,12 +95,10 @@ class Quantities(commands.Cog):
         )
         if response == 'y':
             async with game:
-                game.quantities[quantity_name] = nomic.Quantity(
-                    game=game,
-                    name=quantity_name,
-                    aliases=aliases,
-                )
-                await game.save()
+                try:
+                    game.add_quantity(quantity_name, aliases)
+                except ValueError as exc:
+                    raise discord.UserInputError(str(exc))
         await m.edit(embed=discord.Embed(
             color=colors.YESNO[response],
             title=f"New quantity {quantity_name!r} {strings.YESNO[response]}",
@@ -111,7 +109,7 @@ class Quantities(commands.Cog):
     @commands.check(utils.discord.is_admin)
     async def remove_quantity(self, ctx, quantity: QuantityConverter()):
         """Delete a quantity."""
-        game = nomic.get_game(ctx)
+        game = nomic.Game(ctx)
         m, response = await utils.discord.get_confirm_embed(
             ctx,
             title=f"Delete quantity {quantity.name!r}?",
@@ -119,8 +117,7 @@ class Quantities(commands.Cog):
         )
         if response == 'y':
             async with game:
-                del game.quantities[quantity.name]
-                await game.save()
+                game.remove_quantity(quantity)
         await m.edit(embed=discord.Embed(
             color=colors.YESNO[response],
             title=f"Deletion of quantity {quantity.name!r} {strings.YESNO[response]}",
@@ -130,7 +127,7 @@ class Quantities(commands.Cog):
     @commands.check(utils.discord.is_admin)
     async def rename_quantity(self, ctx, quantity: QuantityConverter(), new_name: str):
         """Rename a quantity."""
-        game = nomic.get_game(ctx)
+        game = nomic.Game(ctx)
         self._check_quantity_names(game, new_name)
         m, response = await utils.discord.get_confirm_embed(
             ctx,
@@ -138,10 +135,7 @@ class Quantities(commands.Cog):
         )
         if response == 'y':
             async with game:
-                del game.quantities[quantity.name]
-                quantity.name = new_name
-                game.quantities[new_name] = quantity
-                await game.save()
+                quantity.rename(quantity, new_name)
         await m.edit(embed=discord.Embed(
             color=colors.YESNO[response],
             title=f"Renaming of quantity {quantity.name!r} {strings.YESNO[response]}",
@@ -151,11 +145,10 @@ class Quantities(commands.Cog):
     @commands.check(utils.discord.is_admin)
     async def set_quantity_aliases(self, ctx, quantity: QuantityConverter(), *new_aliases: str):
         """Change a quantity's aliases."""
-        game = nomic.get_game(ctx)
+        game = nomic.Game(ctx)
         self._check_quantity_names(game, new_aliases, quantity)
         async with game:
-            quantity.aliases = new_aliases
-            await game.save()
+            quantity.set_quantity_aliases(new_aliases)
         await ctx.message.add_reaction(emoji.SUCCESS)
 
     ########################################
@@ -195,7 +188,7 @@ class Quantities(commands.Cog):
                            user: utils.discord.MeOrMemberConverter(),
                            *, reason: str = ''):
         """Set the value of a quantity for a player or role."""
-        await self.transact(ctx, amount, amount - quantity.get(user), user, reason=reason)
+        await self.transact(ctx, amount - quantity.get(user), quantity, user, reason=reason)
 
     @commands.command('give', aliases=['+'])
     async def give(self, ctx,
@@ -220,7 +213,7 @@ class Quantities(commands.Cog):
                        quantity: QuantityConverter(),
                        user: utils.discord.MeOrMemberConverter(),
                        *, reason: str = ''):
-        game = nomic.get_game(ctx)
+        game = nomic.Game(ctx)
         positive = amount >= 0
         new_amount = quantity.get(user) + amount
         description = f"**{'+' if positive else '-'}{abs(amount)} {quantity.name}**"
@@ -237,7 +230,6 @@ class Quantities(commands.Cog):
                 # the beginning of this function's execution.
                 new_amount = quantity.get(user) + amount
                 quantity.set(user, new_amount)
-                await game.save()
                 description += f" (now **{new_amount}**)"
         await m.edit(embed=discord.Embed(
             color=colors.YESNO[response],

@@ -17,7 +17,7 @@ class PlayerActivity(commands.Cog):
         self.bot = bot
 
     async def record_activity(self, ctx, user):
-        game = nomic.get_game(ctx)
+        game = nomic.Game(ctx)
         # Don't bother updating the player activity if they've been active
         # in the last ten minutes.
         diffs = game.activity_diffs
@@ -25,7 +25,6 @@ class PlayerActivity(commands.Cog):
             async with game:
                 game.record_activity(user)
                 l.info(f"Recorded activity for {utils.discord.fake_mention(user)!r} on {game.guild.name!r}")
-                await game.save()
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -38,7 +37,7 @@ class PlayerActivity(commands.Cog):
             await self.record_activity(reaction.message.guild, user)
 
     async def _list_players(self, ctx, users: Iterator[discord.abc.User]):
-        game = nomic.get_game(ctx)
+        game = nomic.Game(ctx)
         users = set(users)
         users = utils.discord.sort_users(users)
         diffs = game.activity_diffs
@@ -93,19 +92,19 @@ class PlayerActivity(commands.Cog):
     @activity.command('list', aliases=['l', 'ls', 'of'])
     async def active_players_list_all(self, ctx, *users: discord.abc.User):
         """List all tracked players, both active and inactive."""
-        game = nomic.get_game(ctx)
+        game = nomic.Game(ctx)
         await self._list_players(ctx, users or game.player_activity.keys())
 
     @activity.command('active')
     async def activity_active(self, ctx):
         """List all active players."""
-        game = nomic.get_game(ctx)
+        game = nomic.Game(ctx)
         await self._list_players(ctx, filter(game.is_active, game.player_activity))
 
     @activity.command('inactive')
     async def activity_inactive(self, ctx):
         """List all inactive players."""
-        game = nomic.get_game(ctx)
+        game = nomic.Game(ctx)
         await self._list_players(ctx, filter(game.is_inactive, game.player_activity))
 
     @commands.command('active')
@@ -124,7 +123,7 @@ class PlayerActivity(commands.Cog):
 
         `new_cutoff_in_hours`, if specified, must be an integer number of hours.
         """
-        game = nomic.get_game(ctx)
+        game = nomic.Game(ctx)
         description = f"The player activity cutoff is currently **{utils.format_hours(game.flags.player_activity_cutoff)}**."
         if new_cutoff_in_hours is None:
             if await utils.discord.is_admin(ctx):
@@ -145,7 +144,7 @@ class PlayerActivity(commands.Cog):
             if response == 'y':
                 async with game:
                     game.flags.player_activity_cutoff = new_cutoff
-                    await game.save()
+                    game.need_save()
             await m.edit(embed=discord.Embed(
                 color=colors.YESNO[response],
                 title=f"Player activity cutoff change {strings.YESNO[response]}",

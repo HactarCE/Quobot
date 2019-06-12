@@ -10,7 +10,7 @@ except ImportError:
     exit(1)
 
 from cogs import get_extensions
-from constants import info
+from constants import colors, info
 from utils import l, LOG_SEP
 import utils
 
@@ -82,6 +82,8 @@ class Bot(commands.Bot):
                     succeeded[extension] = True
             except Exception as exc:
                 l.error(f"Failed to load extension {extension!r} due to {type(exc).__name__}: {exc}")
+                if hasattr(exc, 'original'):
+                    l.error(f"More details: {type(exc.original).__name__}: {exc.original}")
                 succeeded[extension] = False
         if succeeded:
             l.info(LOG_SEP)
@@ -101,7 +103,16 @@ class Bot(commands.Bot):
         """
         if message.author.bot:
             return  # Ignore all bots.
-        await self.process_commands(message)
+        if message.content.startswith(self.user.mention):
+            prefix = info.COMMAND_PREFIX
+            description = f"Hi! I'm {self.user.mention}, {info.DESCRIPTION[0].lower()}{info.DESCRIPTION[1:]}."
+            description += f" Type `{prefix}help` to get general bot help, `{prefix}help <command>` to get help for a specific command, and `!about` for general info about me."
+            await message.channel.send(embed=discord.Embed(
+                color=colors.INFO,
+                description=description,
+            ))
+        else:
+            await self.process_commands(message)
 
     async def on_command_error(self, exc, *args, **kwargs):
         await utils.error_handling.on_command_error(exc, *args, **kwargs)

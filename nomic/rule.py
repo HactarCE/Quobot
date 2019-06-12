@@ -1,9 +1,11 @@
 from collections import OrderedDict
 from dataclasses import dataclass
-from typing import Optional, List
+from typing import Optional, List, Set
 import discord
+import functools
 import re
 
+from .base import BaseGame
 from constants import colors
 import utils
 
@@ -14,11 +16,12 @@ class _Rule:
     tag: str
     title: str
     content: str
-    parent: Optional['Rule'] = 'root'
-    children: List['Rule'] = None
+    parent_tag: Optional[str] = None
+    child_tags: List[str] = None
     message_ids: List[int] = None
 
 
+@functools.total_ordering
 class Rule(_Rule):
     """A dataclass representing a section or subsection of the game rules.
 
@@ -29,39 +32,57 @@ class Rule(_Rule):
     - content -- string
 
     Optional attribiutes:
-    - parent (default game.get_rule('root')) -- string or Rule (converted to
-      Rule)
-    - children (default []) -- list of strings or list of Rules (converted to
-      list of Rules)
+    - parent_tag (default None) -- string
+    - child_tags (default []) -- list of strings
     - message_ids (default []) -- list of discord.Message or IDs (converted to
       list of integer IDs)
     """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if self.children is None:
-            self.children = []
+        if self.child_tags is None:
+            self.child_tags = []
         if self.message_ids is None:
             self.message_ids = []
-        if isinstance(self.parent, str):
-            self.parent = self.game.get_rule(self.parent)
-        for i, v in enumerate(self.children):
-            if isinstance(i, str):
-                self.children[i] = self.game.get_rule(v)
 
     def export(self) -> dict:
         return OrderedDict(
             tag=self.tag,
             title=self.title,
             content=self.content,
-            parent=self.parent and self.parent.tag,
-            children=[r.tag for r in self.children],
+            parent_tag=self.parent_tag,
+            child_tags=self.child_tags,
             message_ids=self.message_ids,
         )
+
+    async def refresh(self):
+        await self.game.refresh_rule(self)
+
+    async def repost(self):
+        await self.game.repost_rule(self)
 
     async def fetch_messages(self) -> discord.Message:
         return [self.game.rules_channel.fetch_message(message_id)
                 async for message_id in self.message_ids]
+
+    @property
+    def parent(self):
+        return self.parent_tag and self.game.get_rule(self.parent_tag)
+
+    @property
+    def children(self):
+        return [self.game.get_rule(tag) for tag in self.child_tags]
+
+    @property
+    def descendants(self):
+        for child in self.children:
+            yield from child.descendants
+
+    @property
+    def depth(self):
+        if self.tag == 'root':
+            return 0
+        return self.parent.depth + 1
 
     @property
     def section_number(self) -> str:
@@ -140,6 +161,126 @@ class Rule(_Rule):
                 description=chunk,
             ).set_footer(text=self.tag))
 
-    @classmethod
-    def get_root(cls, game: object) -> 'Rule':
-        return cls(game=game, tag='root', title=None, content=None)
+    def __lt__(self, other):
+        if self.parent == other.parent:
+            return self.parent.child_tags.index(self.tag) < self.parent.child_tags.index(other.tag)
+        elif self.depth > other.depth:
+            return self.parent < other
+        elif self.depth < other.depth:
+            return self < other.parent
+        else:
+            return self.parent < other.parent
+
+    def __eq__(self, other):
+        return self.tag == other.tag
+
+    def __hash__(self):
+        # This isn't ideal, but it should have all the necessary properties of a
+        # __hash__().
+        return id(self)
+
+
+class RuleManager(BaseGame):
+
+    def init_data(self, rule_data: Optional[dict]):
+        if rule_data:
+            self.rules = {}
+            for tag, rule in rule_data.items():
+                self.rules[tag] = Rule(game=self, **rule)
+        else:
+            self.rules = {
+                'root': {'tag': 'root', 'title': None, 'content': None},
+            }
+
+    def export(self) -> dict:
+        return utils.sort_dict({k: r.export() for k, r in self.rules.items()})
+
+    async def refresh_rule(self, *rules: Rule):
+        """Update the messages for one or more proposals.
+
+        May throw `TypeError`, `ValueError`, or `discord.Forbidden` exceptions.
+        """
+        self.assert_locked()
+        for rule in sorted(set(rules)):
+            try:
+                messages = rule.fetch_messages()
+                embeds = rule.embeds
+                # Handle too few messages
+                if len(messages) < len(embeds):
+                    await self.repost_rule(rule)
+                    return
+                # Handle too many messages
+                for m in messages[len(embeds):]:
+                    await m.delete()
+                for m, embed in zip(messages, embeds):
+                    await m.edit(embed=embed)
+            except discord.NotFound:
+                await self.repost_rule(rule)
+                return
+
+    async def repost_rule(self, *rules: Rule):
+        """Remove and repost the messages for one or more proposals.
+
+        May throw `TypeError`, `ValueError`, or `discord.Forbidden` exceptions.
+        """
+        self.assert_locked()
+        start = min(rules)
+        all_rules = self.root_rule.descendants
+        while next(all_rules) < start:
+            pass
+        repost_rules = [start] + list(all_rules)
+        rule_messages = []
+        for rule in repost_rules:
+            rule_messages += rule.fetch_messages()
+        if rule_messages:
+            try:
+                await utils.discord.safe_bulk_delete(rule_messages)
+            except (discord.ClientException, discord.HTTPException):
+                for m in rule_messages:
+                    await m.delete()
+        for rule in repost_rules:
+            rule.message_ids = []
+            for embed in rule.embeds:
+                m = await self.rules_channel.send(embed=embed)
+                rule.message_ids.append(m.id)
+        self.need_save()
+
+    def get_rule(self, tag: str) -> Optional[Rule]:
+        return tag != 'root' and self.rules.get(tag)
+
+    @property
+    def root_rule(self):
+        return self.rules['root']
+
+    async def get_rule_messages(self) -> Set[discord.Message]:
+        messages = set()
+        for rule in self.rules.values():
+            for m in await rule.fetch_messages():
+                messages.add(m)
+        return messages
+
+    def assert_rules_validity(self):
+        root = self.root_rule
+        visited = set()
+        if not root:
+            raise RuntimeError(f"Error loading rules: Root rule does not exist")
+        self._assert_rules_validity(self.get_rule('root'), visited)
+        for rule in self.rules.values():
+            if rule not in visited:
+                raise RuntimeError(f"Error loading rules: Rule {rule} does not exist in the rule hierarchy")
+
+    def _assert_rules_validity(self, start: Rule, visited: Set[Rule]):
+        for child in start.children:
+            if not child.parent == start:
+                raise RuntimeError(f"Error loading rules: Rule {child} has {child.parent} as a child instead of {start}")
+            if child in visited:
+                raise RuntimeError(f"Error loading rules: Rule {child} appears as a child multiple times")
+            visited.add(child)
+            self.assert_rules_validity(child, visited)
+
+    def _check_rule_tag(self, *tags):
+        for tag in tags:
+            if not isinstance(tag, str):
+                raise TypeError(f"Invalid rule tag: {tag!r}")
+            if not re.match(r'^[a-z\-]+$', tag):
+                raise ValueError(f"Invalid rule tag: {tag!r}")

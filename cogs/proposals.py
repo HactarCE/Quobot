@@ -4,7 +4,7 @@ import asyncio
 import discord
 
 from cogs.general import invoke_command_help
-from constants import colors, emoji, info
+from constants import colors, emoji, info, strings
 import nomic
 import utils
 from utils import l
@@ -15,7 +15,7 @@ class ProposalConverter(commands.Converter):
         if argument.startswith('#'):
             argument = argument[1:]
         try:
-            proposal = nomic.get_game(ctx).get_proposal(int(argument))
+            proposal = nomic.Game(ctx).get_proposal(int(argument))
             if proposal:
                 return proposal
             raise commands.UserInputError(f"Unable to fetch proposal {argument!r}")
@@ -45,7 +45,7 @@ class Proposals(commands.Cog):
         await utils.commands.desig_chan_show(
             ctx,
             "proposals channel",
-            nomic.get_game(ctx).proposals_channel
+            nomic.Game(ctx).proposals_channel
         )
 
     @channel.command('set')
@@ -53,7 +53,7 @@ class Proposals(commands.Cog):
         await utils.commands.desig_chan_set(
             ctx,
             "proposals channel",
-            old_channel=nomic.get_game(ctx).proposals_channel,
+            old_channel=nomic.Game(ctx).proposals_channel,
             new_channel=new_channel or ctx.channel,
             callback=self._set_channel_callback,
         )
@@ -63,15 +63,15 @@ class Proposals(commands.Cog):
         await utils.commands.desig_chan_set(
             ctx,
             "proposals channel",
-            old_channel=nomic.get_game(ctx).proposals_channel,
+            old_channel=nomic.Game(ctx).proposals_channel,
             new_channel=None,
             callback=self._set_channel_callback,
         )
 
-    async def _set_channel_callback(self, ctx, new_channel=None):
-        async with nomic.get_game(ctx) as game:
+    async def _set_channel_callback(self, ctx, new_channel: Optional[discord.TextChannel] = None):
+        async with nomic.Game(ctx) as game:
             game.proposals_channel = new_channel
-            await game.save()
+            game.need_save()
 
     @channel.command('clean')
     async def clean_channel__channel(self, ctx, limit: int = 100):
@@ -86,9 +86,9 @@ class Proposals(commands.Cog):
         """See `proposals channel clean`."""
         await self._clean_channel(ctx, limit)
 
-    async def _clean_channel(self, ctx, limit):
-        await asyncio.sleep(3)  # Avoid ghost messages.
-        game = nomic.get_game(ctx)
+    async def _clean_channel(self, ctx, limit: int = 100):
+        await asyncio.sleep(1)  # Avoid ghost messages.
+        game = nomic.Game(ctx)
         if not game.proposals_channel:
             await ctx.send(embed=discord.Embed(
                 color=colors.ERROR,
@@ -98,10 +98,12 @@ class Proposals(commands.Cog):
         message_iter = game.proposals_channel.history(limit=limit or None)
         proposal_message_ids = set(p.message_id for p in game.proposals)
         unwanted_messages = message_iter.filter(lambda m: m.id not in proposal_message_ids)
-        try:
-            await game.proposals_channel.delete_messages(await unwanted_messages.flatten())
-        except discord.HTTPException:
-            l.warn("Suppressing HTTPException while cleaning proposals channel")
+        await utils.discord.safe_bulk_delete(await unwanted_messages.flatten())
+        if ctx.channel == game.proposals_channel:
+            try:
+                await ctx.message.delete()
+            except discord.NotFound:
+                pass
 
     ########################################
     # MODIFYING PROPOSAL CONTENT
@@ -133,13 +135,15 @@ class Proposals(commands.Cog):
             if message.author.bot:
                 return  # Ignore bots.
             ctx = await self.bot.get_context(message)
-            if message.channel == nomic.get_game(ctx).proposals_channel:
+            if message.channel == nomic.Game(ctx).proposals_channel:
                 prefix = await self.bot.get_prefix(message)
                 if type(prefix) is list:
                     prefix = tuple(prefix)
                 if message.content.startswith(prefix):
                     return  # Ignore commands.
                 await message.delete()
+                if message.content in strings.CONFIRM_MSGS + strings.CANCEL_MSGS:
+                    return  # Ignore confirmations/cancellations.
                 await self._submit_proposal(ctx, message.content)
         except Exception:
             if info.DEV:
@@ -148,7 +152,7 @@ class Proposals(commands.Cog):
                 l.warn(f"Suppressing exception in {self.__class__.__name__}.on_message() listener")
 
     async def _submit_proposal(self, ctx, content: str):
-        game = nomic.get_game(ctx)
+        game = nomic.Game(ctx)
         content = content.strip()
         if not content:
             if ctx.channel == game.proposals_channel:
@@ -171,16 +175,10 @@ class Proposals(commands.Cog):
         )
         if response == 'y':
             async with game:
-                new_proposal = nomic.Proposal(
-                    game=game,
-                    n=len(game.proposals) + 1,
+                await game.add_proposal(
                     author=ctx.author,
                     content=content,
                 )
-                game.proposals.append(new_proposal)
-                # Game.repost_proposal() saves the gamestate so we don't have
-                # to do that here.
-                await game.repost_proposal(len(game.proposals))
         if ctx.channel.id == game.proposals_channel.id:
             await m.delete()
         else:
@@ -207,8 +205,8 @@ class Proposals(commands.Cog):
         """
         if not (await utils.discord.is_admin(ctx) or ctx.author == proposal.author):
             # TODO test this path
-            raise commands.CheckFailure("You cannot edit someone else's proposal")
-        game = nomic.get_game(ctx)
+            raise commands.UserInputError("You cannot edit someone else's proposal")
+        game = nomic.Game(ctx)
         new_content = new_content.strip()
         if not new_content:
             if ctx.channel == game.proposals_channel:
@@ -221,10 +219,10 @@ class Proposals(commands.Cog):
             await ctx.send(embed=discord.Embed(
                 color=colors.INFO,
                 title=f"Current contents of proposal #{proposal.n}",
-                content=f'```\n{proposal.content}\n```'
+                description=f'```\n{proposal.content}\n```'
             ))
             m, response, new_content = await utils.discord.query_content(
-                ctx, title="Write the new contents for proposal #{proposal.n} here:",
+                ctx, title=f"Write the new contents for proposal #{proposal.n} here:",
             )
             if response != 'y':
                 await utils.discord.edit_embed_for_response(
@@ -238,9 +236,7 @@ class Proposals(commands.Cog):
         )
         if response == 'y':
             async with game:
-                proposal.content = new_content
-                await game.refresh_proposal(proposal.n)
-                await game.save()
+                await proposal.set_content(new_content)
         if ctx.channel.id == game.proposals_channel.id:
             await m.delete()
         else:
@@ -289,25 +285,26 @@ class Proposals(commands.Cog):
             amount = 1
         user = user or ctx.author
         if not (await utils.discord.is_admin(ctx) or ctx.author == user):
-            raise commands.CheckFailure("You aren't allowed to change others' votes.")
+            raise commands.UserInputError("You aren't allowed to change others' votes.")
         if vote_type not in nomic.VOTE_ALIASES:
             raise commands.UserInputError(f"Invalid vote type {vote_type!r}")
         vote_type = nomic.VOTE_ALIASES[vote_type]
-        game = nomic.get_game(ctx)
-        # TODO some function to do sorted(set(...)) on proposals/quantities
-        # (maybe classmethod?)
-        proposal_nums = sorted(set(p.n for p in proposals))
-        proposals = [game.get_proposal(n) for n in proposal_nums]
+        vote_func = {
+            'for': nomic.Proposal.vote_for,
+            'against': nomic.Proposal.vote_against,
+            'abstain': nomic.Proposal.vote_abstain,
+            'remove': nomic.Proposal.vote_remove,
+        }[vote_type]
+        game = nomic.Game(ctx)
+        proposals = sorted(set(proposals))
         for proposal in proposals:
             if proposal.status != nomic.ProposalStatus.VOTING:
-                raise discord.UserInputError(f"Cannot vote on proposal #{proposal.n} because it is closed for voting")
+                raise commands.UserInputError(f"Cannot vote on proposal #{proposal.n} because it is closed for voting")
+        failed = False
         async with game:
-            failed = False
             for proposal in proposals:
-                if not proposal.vote(user, vote_type, amount):
+                if not await vote_func(proposal, user, amount):
                     failed = True
-            await game.refresh_proposal(*proposal_nums)
-            await game.save()
         try:
             if failed:
                 await ctx.message.add_reaction(emoji.FAILED)
@@ -315,6 +312,7 @@ class Proposals(commands.Cog):
                 await ctx.message.add_reaction(emoji.SUCCESS)
         except Exception:
             pass
+        await self._clean_channel(ctx)
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
@@ -324,21 +322,19 @@ class Proposals(commands.Cog):
         message = await channel.fetch_message(payload.message_id)
         ctx = await self.bot.get_context(message)
         member = ctx.guild.get_member(payload.user_id)
-        game = nomic.get_game(ctx)
+        game = nomic.Game(ctx)
         if game.proposals_channel and payload.channel_id == game.proposals_channel.id:
             for proposal in game.proposals:
                 if proposal.message_id == payload.message_id:
                     try:
-                        vote_type = {
-                            emoji.VOTE_FOR: 'for',
-                            emoji.VOTE_AGAINST: 'against',
-                            emoji.VOTE_ABSTAIN: 'abstain',
+                        vote_func = {
+                            emoji.VOTE_FOR: proposal.vote_for,
+                            emoji.VOTE_AGAINST: proposal.vote_against,
+                            emoji.VOTE_ABSTAIN: proposal.vote_abstain_or_remove,
                         }[payload.emoji.name]
                         async with game:
-                            proposal.vote(member, vote_type)
-                            await game.refresh_proposal(proposal.n)
-                            await game.save()
-                    except Exception:
+                            await vote_func(member)
+                    except KeyError:
                         await ctx.message.remove_reaction(payload.emoji, member)
 
     ########################################
@@ -350,48 +346,56 @@ class Proposals(commands.Cog):
                               proposals: commands.Greedy[ProposalConverter],
                               *, reason: str):
         """Mark one or more proposals as passed, and lock voting on them."""
-        self._set_proposal_status(ctx, nomic.ProposalStatus.PASSED, proposals, reason)
+        await self._set_proposal_status(ctx, nomic.ProposalStatus.PASSED, proposals, reason)
 
     @proposals.command('fail', rest_is_raw=True)
     async def fail_proposal_1(self, ctx,
                               proposals: commands.Greedy[ProposalConverter],
                               *, reason: str):
         """Mark one or more proposals as failed, and lock voting on them."""
-        self._set_proposal_status(ctx, nomic.ProposalStatus.FAILED, proposals, reason)
+        await self._set_proposal_status(ctx, nomic.ProposalStatus.FAILED, proposals, reason)
 
     @proposals.command('revote', aliases=['reopen'], rest_is_raw=True)
     async def revote_proposal_1(self, ctx,
                                 proposals: commands.Greedy[ProposalConverter],
                                 *, reason: str):
         """Reopen one or more proposals for voting."""
-        self._set_proposal_status(ctx, nomic.ProposalStatus.VOTING, proposals, reason)
+        await self._set_proposal_status(ctx, nomic.ProposalStatus.VOTING, proposals, reason)
+
+    @proposals.command('remove', aliases=['rm', 'del'], rest_is_raw=True)
+    async def remove_proposal_1(self, ctx,
+                                proposals: commands.Greedy[ProposalConverter],
+                                *, reason: str):
+        """Mark one or more proposals as deleted."""
+        await self._set_proposal_status(ctx, nomic.ProposalStatus.DELETED, proposals, reason)
 
     @commands.command('pass', rest_is_raw=True)
     async def pass_proposal_2(self, ctx,
                               proposals: commands.Greedy[ProposalConverter],
                               *, reason: str):
         """Mark one or more proposals as passed, and lock voting on them. See `proposal pass`."""
-        self._set_proposal_status(ctx, nomic.ProposalStatus.PASSED, proposals, reason)
+        await self._set_proposal_status(ctx, nomic.ProposalStatus.PASSED, proposals, reason)
 
     @commands.command('fail', rest_is_raw=True)
     async def fail_proposal_2(self, ctx,
                               proposals: commands.Greedy[ProposalConverter],
                               *, reason: str):
         """Mark one or more proposals as failed, and lock voting on them. See `proposal fail`."""
-        self._set_proposal_status(ctx, nomic.ProposalStatus.FAILED, proposals, reason)
+        await self._set_proposal_status(ctx, nomic.ProposalStatus.FAILED, proposals, reason)
 
     @commands.command('revote', aliases=['reopen', 'restore'], rest_is_raw=True)
     async def revote_proposal_2(self, ctx,
                                 proposals: commands.Greedy[ProposalConverter],
                                 *, reason: str):
         """Reopen one or more proposals for voting. See `proposal revote`."""
-        self._set_proposal_status(ctx, nomic.ProposalStatus.VOTING, proposals, reason)
+        await self._set_proposal_status(ctx, nomic.ProposalStatus.VOTING, proposals, reason)
 
     @commands.command('remove', aliases=['rm', 'del'], rest_is_raw=True)
-    async def remove_proposal(self, ctx,
-                              proposals: commands.Greedy[ProposalConverter],
-                              *, reason: str):
-        self._set_proposal_status(ctx, nomic.ProposalStatus.DELETED, proposals, reason)
+    async def remove_proposal_2(self, ctx,
+                                proposals: commands.Greedy[ProposalConverter],
+                                *, reason: str):
+        """Mark one or more proposals as deleted. See `proposal remove`."""
+        await self._set_proposal_status(ctx, nomic.ProposalStatus.DELETED, proposals, reason)
 
     async def _set_proposal_status(self, ctx,
                                    new_status: nomic.ProposalStatus,
@@ -400,35 +404,56 @@ class Proposals(commands.Cog):
         if not proposals:
             await invoke_command_help(ctx)
             return
-        game = nomic.get_game(ctx)
-        proposal_nums = sorted(set(p.n for p in proposals))
-        proposals = [game.get_proposal(n) for n in proposal_nums]
+        game = nomic.Game(ctx)
+        proposal = sorted(set(proposals))
         try:
             async with game:
                 for proposal in proposals:
-                    proposal.status = new_status
-                game.refresh_proposal(*proposal_nums)
-                game.save()
+                    await proposal.set_status(new_status)
             try:
                 await ctx.message.add_reaction(emoji.SUCCESS)
             except Exception:
                 pass
-        except (TypeError, ValueError, discord.Forbidden) as exc:
+        except (TypeError, ValueError, discord.Forbidden):
             try:
                 await ctx.message.add_reaction(emoji.FAILURE)
             except Exception:
                 pass
             raise
+        await self._clean_channel(ctx)
 
     ########################################
     # MISCELLANEOUS COMMANDS
     ########################################
 
+    @proposals.command('permadel', rest_is_raw=True)
+    async def permadel_proposal(self, ctx, proposal: ProposalConverter, *, reason: str):
+        """Permanently delete the most recent proposal.
+
+        WARNING: This **cannot** be undone.
+        """
+        if not (await utils.discord.is_admin(ctx) or ctx.author == proposal.author):
+            # TODO test this path
+            raise commands.UserInputError("You cannot permanently delete someone else's proposal")
+        game = nomic.Game(ctx)
+        if proposal.n != len(game.proposals):
+            raise commands.UserInputError("Can only permanently delete most recent proposal")
+        m, response = await utils.discord.get_confirm_embed(ctx,
+            title=f"Permanently delete proposal #{proposal.n}?",
+            content="This cannot be undone."
+        )
+        await utils.discord.edit_embed_for_response(
+            m, response, title_format="Permanent proposal deletion {}"
+        )
+        if response == 'y':
+            async with game:
+                await game.permadel_proposal(proposal)
+        await self._clean_channel(ctx)
+
     @proposals.command('info', aliases=['age', 'i', 'stat', 'stats'])
     async def proposal_info(self, ctx, *proposals: ProposalConverter):
-        game = nomic.get_game(ctx)
-        proposal_nums = sorted(set(p.n for p in proposals))
-        proposals = [game.get_proposal(n) for n in proposal_nums]
+        game = nomic.Game(ctx)
+        proposals = sorted(set(proposals))
         if not proposals:
             title = "Pending proposals"
             for proposal in game.proposals:
@@ -479,17 +504,17 @@ class Proposals(commands.Cog):
     async def refresh_repost_proposal(self, ctx,
                                       proposals: List[nomic.Proposal],
                                       repost: bool):
-        game = nomic.get_game(ctx)
+        game = nomic.Game(ctx)
         try:
             async with game:
                 if repost:
-                    await game.repost_proposal(*(p.n for p in proposals))
+                    await game.repost_proposal(*proposals)
                 else:
-                    await game.refresh_proposal(*(p.n for p in proposals))
+                    await game.refresh_proposal(*proposals)
             await ctx.message.add_reaction(emoji.SUCCESS)
-        except (TypeError, ValueError, discord.Forbidden) as exc:
+        except (TypeError, ValueError, discord.Forbidden):
             await ctx.message.add_reaction(emoji.FAILURE)
-            raise
+        await self._clean_channel(ctx)
 
 
 def setup(bot):

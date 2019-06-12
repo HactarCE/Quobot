@@ -49,6 +49,7 @@ class General(commands.Cog):
         """Ping the bot."""
         await ctx.send("Pong!")
 
+    # TODO: use discord.ext.commands.HelpCommand instead
     @commands.command(aliases=['h', 'man'])
     async def help(self, ctx, *, command_name: str = None):
         """Display a list of all commands or display information about a specific command."""

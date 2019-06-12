@@ -135,6 +135,16 @@ async def send_split_embed(ctx: commands.Context, big_embed: discord.Embed, *, t
             await ctx.send(embed=embed)
 
 
+async def safe_bulk_delete(messages: List[discord.Message]):
+    for i in range(1, len(messages), 100):
+        batch = messages[i:i + 100]
+        try:
+            await batch[0].channel.delete_messages(batch)
+        except discord.HTTPException:
+            for m in batch:
+                await m.delete()
+
+
 async def wait_for_response(ctx: commands.Context,
                             m: discord.Message,
                             message_check: Callable[[discord.Message], bool],

@@ -1,11 +1,13 @@
 from dataclasses import asdict, dataclass
+from typing import Dict, Optional
 
+from .base import BaseGame
 import utils
 
 
 @dataclass
 class GameFlags:
-    """A dataclass tracking several variations on bot mechanics."""
+    """A dataclass tracking several variations on bot behavior."""
 
     allow_vote_abstain: bool = False
     allow_vote_change: bool = True
@@ -14,3 +16,12 @@ class GameFlags:
 
     def export(self) -> dict:
         return utils.sort_dict(asdict(self))
+
+
+class GameFlagManager(BaseGame):
+
+    def init_data(self, data: Optional[Dict]):
+        self.flags = GameFlags(**data or {})
+
+    def export(self) -> dict:
+        return self.flags.export()
