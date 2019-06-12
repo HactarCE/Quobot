@@ -12,7 +12,7 @@ from utils import l
 @functools.total_ordering
 class BaseGame(abc.ABC):
     """An abstract base class which enforces one-game-per-guild and manages
-    locking and GameFlags.
+    logging, locking and GameFlags.
 
     This class does not implement saving/loading; that must be implemented by a
     subclass via the methods load() and save().

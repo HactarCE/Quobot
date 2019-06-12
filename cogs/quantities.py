@@ -80,7 +80,7 @@ class Quantities(commands.Cog):
         await utils.discord.send_split_embed(ctx, embed)
 
     @quantities.command('add', aliases=['create'])
-    @commands.check(utils.discord.is_admin)
+    # @commands.check(utils.discord.is_admin)  # FIXME uncomment for release
     async def add_quantity(self, ctx, quantity_name: str, *aliases: str):
         """Create a new quantity."""
         game = nomic.Game(ctx)
@@ -106,7 +106,7 @@ class Quantities(commands.Cog):
         ))
 
     @quantities.command('remove', aliases=['del', 'delete', 'rm'])
-    @commands.check(utils.discord.is_admin)
+    # @commands.check(utils.discord.is_admin)  # FIXME uncomment for release
     async def remove_quantity(self, ctx, quantity: QuantityConverter()):
         """Delete a quantity."""
         game = nomic.Game(ctx)
@@ -124,31 +124,33 @@ class Quantities(commands.Cog):
         ))
 
     @quantities.command('rename', aliases=['setname'])
-    @commands.check(utils.discord.is_admin)
+    # @commands.check(utils.discord.is_admin)  # FIXME uncomment for release
     async def rename_quantity(self, ctx, quantity: QuantityConverter(), new_name: str):
         """Rename a quantity."""
         game = nomic.Game(ctx)
-        self._check_quantity_names(game, new_name)
+        new_name = new_name.lower()
+        self._check_quantity_names(game, new_name, quantity)
         m, response = await utils.discord.get_confirm_embed(
             ctx,
             title=f"Rename quantity {quantity.name!r} to {new_name!r}?",
         )
         if response == 'y':
             async with game:
-                quantity.rename(quantity, new_name)
+                quantity.rename(new_name)
         await m.edit(embed=discord.Embed(
             color=colors.YESNO[response],
             title=f"Renaming of quantity {quantity.name!r} {strings.YESNO[response]}",
         ))
 
     @quantities.command('setaliases', aliases=['setalias'])
-    @commands.check(utils.discord.is_admin)
+    # @commands.check(utils.discord.is_admin)  # FIXME uncomment for release
     async def set_quantity_aliases(self, ctx, quantity: QuantityConverter(), *new_aliases: str):
         """Change a quantity's aliases."""
         game = nomic.Game(ctx)
+        new_aliases = [s.lower() for s in new_aliases]
         self._check_quantity_names(game, new_aliases, quantity)
         async with game:
-            quantity.set_quantity_aliases(new_aliases)
+            quantity.set_aliases(new_aliases)
         await ctx.message.add_reaction(emoji.SUCCESS)
 
     ########################################
