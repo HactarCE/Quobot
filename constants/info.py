@@ -8,6 +8,10 @@ DEV = CONFIG.get('dev', False)
 TOKEN = CONFIG.get('token')
 COMMAND_PREFIX = CONFIG.get('prefix', '!')
 
+GITHUB_EMAIL = CONFIG.get('github_email')
+GITHUB_REPO = CONFIG.get('github_repo')
+GITHUB_REPO_LINK = f'https://github.com/{GITHUB_REPO}'
+
 NAME = "Quobot"
 with open('VERSION') as f:
     VERSION = f.read().strip()

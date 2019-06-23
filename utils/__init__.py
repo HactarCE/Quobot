@@ -163,6 +163,7 @@ def isfinite(value):
     return not (isnan(value) or isinf(value))
 
 
+# TODO: do this better
 from . import (  # noqa: E402, F401
     commands,
     discord,

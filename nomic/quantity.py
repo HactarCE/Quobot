@@ -5,8 +5,8 @@ import discord
 import functools
 import re
 
-from .base import BaseGame
 from .playerdict import PlayerDict
+from .repoman import GameRepoManager
 import utils
 
 
@@ -71,16 +71,19 @@ class Quantity(_Quantity):
         return id(self)
 
 
-class QuantityManager(BaseGame):
+class QuantityManager(GameRepoManager):
 
-    def init_data(self, quantity_data: Optional[dict]):
+    def load(self):
+        db = self.get_db('quantities')
         self.quantities = {}
-        if quantity_data:
-            for name, quantity in quantity_data.items():
+        if db:
+            for name, quantity in db.items():
                 self.quantities[name] = Quantity(game=self, **quantity)
 
-    def export(self) -> dict:
-        return utils.sort_dict({k: q.export() for k, q in self.quantities.items()})
+    def save(self):
+        db = self.get_db('quantities')
+        db.replace(utils.sort_dict({k: q.export() for k, q in self.quantities.items()}))
+        db.save()
 
     def add_quantity(self, quantity_name: str, aliases: List[str]):
         """Create a new game quantity.
@@ -97,7 +100,7 @@ class QuantityManager(BaseGame):
             name=quantity_name,
             aliases=aliases,
         )
-        self.need_save()
+        self.save()
 
     def rename_quantity(self, quantity: Quantity, new_name: str):
         self.assert_locked()
@@ -108,19 +111,19 @@ class QuantityManager(BaseGame):
         del self.quantities[quantity.name]
         quantity.name = new_name
         self.quantities[quantity.name] = quantity
-        self.need_save()
+        self.save()
 
     def remove_quantity(self, quantity: Quantity):
         self.assert_locked()
         del self.quantities[quantity.name]
-        self.need_save()
+        self.save()
 
     def set_quantity_aliases(self, quantity: Quantity, new_aliases: List[str]):
         self.assert_locked()
         for name in new_aliases:
             self._check_quantity_name(name, ignore=quantity)
         quantity.aliases = new_aliases
-        self.need_save()
+        self.save()
 
     def get_quantity(self, name: str) -> Optional[Quantity]:
         name = name.lower()

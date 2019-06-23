@@ -208,7 +208,7 @@ class TransientMessageReact:
         for e in self.emojis:
             await self.m.add_reaction(e)
 
-    async def __aexit__(self, exc_type, exc, tb):
+    async def __aexit__(self, exc_type, exc_value, traceback):
         for e in self.emojis:
             await self.m.remove_reaction(e, self.m.guild.me)
 

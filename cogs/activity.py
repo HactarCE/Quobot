@@ -16,8 +16,13 @@ class PlayerActivity(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    async def cog_check(self, ctx):
+        return nomic.Game(ctx).ready
+
     async def record_activity(self, ctx, user):
         game = nomic.Game(ctx)
+        if not nomic.Game(ctx).ready:
+            return
         # Don't bother updating the player activity if they've been active
         # in the last ten minutes.
         diffs = game.activity_diffs
@@ -83,11 +88,10 @@ class PlayerActivity(commands.Cog):
             )
         await utils.discord.send_split_embed(ctx, embed)
 
-    @commands.group('activity')
+    @commands.group('activity', invoke_without_command=True)
     async def activity(self, ctx):
         """Track active players."""
-        if ctx.invoked_subcommand is None:
-            await utils.discord.invoke_command(ctx, 'activity list')
+        await utils.discord.invoke_command(ctx, 'activity list')
 
     @activity.command('list', aliases=['l', 'ls', 'of'])
     async def active_players_list_all(self, ctx, *users: discord.abc.User):
@@ -144,7 +148,7 @@ class PlayerActivity(commands.Cog):
             if response == 'y':
                 async with game:
                     game.flags.player_activity_cutoff = new_cutoff
-                    game.need_save()
+                    game.save()
             await m.edit(embed=discord.Embed(
                 color=colors.YESNO[response],
                 title=f"Player activity cutoff change {strings.YESNO[response]}",

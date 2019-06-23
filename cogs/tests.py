@@ -12,10 +12,9 @@ class Tests(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.group('test')
+    @commands.group('test', invoke_without_command=True)
     async def test_group(self, ctx):
-        if ctx.invoked_subcommand is None:
-            await invoke_command_help(ctx)
+        await invoke_command_help(ctx)
 
     @test_group.command('embed_split')
     async def test_embed_split(self, ctx):

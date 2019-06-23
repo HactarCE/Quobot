@@ -28,10 +28,9 @@ class BaseGame(abc.ABC):
         if not isinstance(self.guild, discord.Guild):
             raise TypeError(f"Can only get game from guild, not {arg!r}")
         self.__dict__ = self._games[self.guild.id] = self._games.get(self.guild.id, self.__dict__)
-        self._needs_save = False
+        # self._needs_save = False
         if not hasattr(self, '_lock'):
             self._lock = asyncio.Lock()
-            self.load_guild_data()
 
     def get_member(self, user_id: Union[int, discord.abc.User]) -> discord.Member:
         """Fetch a member of the game's guild from an ID, user, or member."""
@@ -54,18 +53,18 @@ class BaseGame(abc.ABC):
         return self
 
     async def __aexit__(self, exc_type, exc_value, traceback):
-        if self._needs_save:
-            if exc_type:
-                l.warn("Error occurred; not saving game")
-            else:
-                await self.save()
-                self._needs_save = False
+        # if self._needs_save:
+        #     if exc_type:
+        #         l.warn("Error occurred; not saving game")
+        #     else:
+        #         await self.save()
+        #         self._needs_save = False
         self._owned_thread_id = None
         self._lock.release()
 
-    def need_save(self):
-        self.assert_locked()
-        self._needs_save = True
+    # def need_save(self):
+    #     self.assert_locked()
+    #     self._needs_save = True
 
     def assert_locked(self):
         if not self._owned_thread_id == threading.get_ident():

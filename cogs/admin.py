@@ -51,7 +51,9 @@ class Admin(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.__local_check = utils.discord.is_admin
+
+    async def cog_check(self, ctx):
+        return await utils.discord.is_admin(ctx)
 
     @commands.command(aliases=['die', 'quit'])
     async def shutdown(self, ctx):

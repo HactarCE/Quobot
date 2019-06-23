@@ -1,7 +1,6 @@
 from dataclasses import asdict, dataclass
-from typing import Dict, Optional
 
-from .base import BaseGame
+from .repoman import GameRepoManager
 import utils
 
 
@@ -18,10 +17,13 @@ class GameFlags:
         return utils.sort_dict(asdict(self))
 
 
-class GameFlagManager(BaseGame):
+class GameFlagManager(GameRepoManager):
 
-    def init_data(self, data: Optional[Dict]):
-        self.flags = GameFlags(**data or {})
+    def load(self):
+        db = self.get_db('flags')
+        self.flags = GameFlags(**db or {})
 
-    def export(self) -> dict:
-        return self.flags.export()
+    def save(self):
+        db = self.get_db('flags')
+        db.replace(self.flags.export())
+        db.save()

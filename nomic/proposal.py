@@ -2,12 +2,13 @@ from collections import OrderedDict
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import List, Optional, Set
+from typing import Optional, Set
 import discord
 import functools
 
 from .gameflags import GameFlagManager
 from .playerdict import PlayerDict
+from .repoman import GameRepoManager
 from constants import colors, emoji, strings
 import utils
 
@@ -101,7 +102,7 @@ class Proposal(_Proposal):
         if new_vote_amount is None:
             del self.votes[player]
         await self.refresh()
-        self.game.need_save()
+        self.game.save()
         return True
 
     async def vote_for(self, player: discord.Member, amount: int = 1):
@@ -159,13 +160,13 @@ class Proposal(_Proposal):
         self.game.assert_locked()
         self.status = new_status
         await self.refresh()
-        self.game.need_save()
+        self.game.save()
 
     async def set_content(self, new_content: str):
         self.game.assert_locked()
         self.content = new_content
         await self.refresh()
-        self.game.need_save()
+        self.game.save()
 
     async def refresh(self):
         await self.game.refresh_proposal(self)
@@ -246,6 +247,22 @@ class Proposal(_Proposal):
         embed.set_footer(**utils.discord.embed_happened_footer("Submitted", self.author))
         return embed
 
+    @property
+    def markdown(self):
+        s = f"<a name='{self.n}'/> "
+        s += '\n\n'
+        s += f"## #{self.n}"
+        if self.status != ProposalStatus.VOTING:
+            s += f" \N{EM DASH} {self.status.value.capitalize()}"
+        s += '\n\n'
+        if self.status != ProposalStatus.DELETED:
+            s += self.content
+            s += '\n\n'
+        return s
+
+    def __str__(self):
+        return f"proposal #{self.n}"
+
     def __lt__(self, other):
         return self.n < other.n
 
@@ -258,16 +275,49 @@ class Proposal(_Proposal):
         return hash((self.game.guild.id, self.n, self.timestamp))
 
 
-class ProposalManager(GameFlagManager):
+class ProposalManager(GameRepoManager):
 
-    def init_data(self, proposal_data: Optional[List]):
+    def load(self):
+        db = self.get_db('proposals')
+        self.proposals_channel = db.get('channel')
+        if self.proposals_channel:
+            self.proposals_channel = self.guild.get_channel(self.proposals_channel)
         self.proposals = []
-        if proposal_data:
-            for proposal in proposal_data:
+        if db.get('proposals'):
+            for proposal in db['proposals']:
                 self.proposals.append(Proposal(game=self, **proposal))
 
-    def export(self):
-        return [p.export() for p in self.proposals]
+    def save(self):
+        db = self.get_db('proposals')
+        db.replace(OrderedDict(
+            channel=self.proposals_channel and self.proposals_channel.id,
+            proposals=[p.export() for p in self.proposals],
+        ))
+        db.save()
+        with open(self.get_file('proposals.md'), 'w') as f:
+            f.write(f"# {self.guild.name} \N{EM DASH} Proposals")
+            f.write('\n\n')
+            for p in self.proposals:
+                f.write(p.markdown)
+
+    async def commit_proposals_and_log(self,
+                                       agent: discord.Member,
+                                       action: str,
+                                       proposal: Proposal,
+                                       post: str = '',
+                                       link_to_proposal: bool = True,
+                                       **kwargs):
+        """Commit the proposals Markdown file and log the event."""
+        if await self.repo.is_clean('proposals.md'):
+            return
+        commit_msg = markdown_msg = f"{utils.discord.fake_mention(agent)} {action} "
+        commit_msg += str(proposal)
+        if link_to_proposal:
+            markdown_msg += f"[{proposal}](../proposals.md#{proposal.n})"
+        else:
+            markdown_msg += str(proposal)
+        await self.commit('proposals.md', msg=commit_msg + post)
+        await self.log(markdown_msg + post, **kwargs)
 
     async def refresh_proposal(self, *proposals: Proposal):
         """Update the messages for one or more proposals.
@@ -309,7 +359,7 @@ class ProposalManager(GameFlagManager):
                 title=f"Preparing proposal #{proposal.n}\N{HORIZONTAL ELLIPSIS}",
             ))
             proposal.message_id = m.id
-        self.need_save()
+        self.save()
         await self.refresh_proposal(*proposals)
 
     def has_proposal(self, n: int) -> bool:
@@ -330,7 +380,7 @@ class ProposalManager(GameFlagManager):
         n = len(self.proposals) + 1
         new_proposal = Proposal(game=self, n=n, **kwargs)
         self.proposals.append(new_proposal)
-        # ProposalManager.repost_proposal() calls BaseGame.need_save() so we
+        # ProposalManager.repost_proposal() calls BaseGame.save() so we
         # don't have to do that here.
         await self.repost_proposal(new_proposal)
         return new_proposal
@@ -340,38 +390,74 @@ class ProposalManager(GameFlagManager):
         if not proposal.n == len(self.proposals):
             raise RuntimeError("Cannot delete any proposal other than the last one")
         del self.proposals[proposal.n - 1]
-        self.need_save()
+        self.save()
         await (await proposal.fetch_message()).delete()
 
-    async def log_proposal_add(self, proposal: Proposal):
-        self.assert_locked()
-        # TODO: log it!
+    async def log_proposal_submit(self, agent: discord.Member, proposal: Proposal):
+        await self.commit_proposals_and_log(
+            agent, "submitted", proposal, link_to_commit=True
+        )
 
-    async def log_proposal_permadel(self, proposal: Proposal):
-        self.assert_locked()
-        # TODO: log it!
+    async def log_proposal_permadel(self, agent: discord.Member, proposal: Proposal):
+        await self.commit_proposals_and_log(
+            agent, "permanently deleted", proposal, link_to_proposal=False, link_to_commit=True
+        )
 
     async def log_proposal_change_status(self,
-                                         proposal: Proposal,
-                                         player: discord.Member,
-                                         old_status: ProposalStatus,
-                                         new_status: ProposalStatus):
-        self.assert_locked()
-        # TODO: log it!
+                                         agent: discord.Member,
+                                         proposal: Proposal):
+        if proposal.status == ProposalStatus.VOTING:
+            action = "reopened"
+        else:
+            action = proposal.status.value
+        await self.commit_proposals_and_log(
+            agent, action, proposal, link_to_commit=True
+        )
 
     async def log_proposal_change_content(self,
-                                          proposal: Proposal,
-                                          player: discord.Member,
-                                          old_content: str,
-                                          new_content: str):
-        self.assert_locked()
-        # TODO: log it!
+                                          agent: discord.Member,
+                                          proposal: Proposal):
+        await self.commit_proposals_and_log(
+            agent, "edited", proposal, link_to_commit=True
+        )
 
     async def log_proposal_vote(self,
-                                proposal: Proposal,
                                 agent: discord.Member,
+                                proposal: Proposal,
                                 player: discord.Member,
                                 old_vote_amount: Optional[int],
                                 new_vote_amount: Optional[int]):
-        self.assert_locked()
-        # TODO: log it!
+
+        if old_vote_amount == new_vote_amount:
+            return
+
+        if new_vote_amount is None:
+            action = "removed their vote from"
+        elif old_vote_amount is not None:
+            action = "changed their vote on"
+        elif new_vote_amount == 0:
+            action = "abstained on"
+        elif new_vote_amount > 0:
+            action = "voted for"
+        elif new_vote_amount < 0:
+            action = "voted against"
+        else:
+            action = "WTFed"
+
+        if player != agent:
+            post = f" on behalf of {utils.discord.fake_mention(player)}"
+        else:
+            post = ''
+        if abs(old_vote_amount or 0) > 1 or abs(new_vote_amount or 0) > 1:
+            post += " ("
+            if old_vote_amount is not None:
+                post += f"was {old_vote_amount}"
+                if new_vote_amount:
+                    post += "; "
+            if new_vote_amount is not None:
+                post += f"now {new_vote_amount}"
+            post += ")"
+
+        await self.commit_proposals_and_log(
+            agent, action, proposal, post=post
+        )

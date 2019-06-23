@@ -12,16 +12,15 @@ async def desig_chan_show(ctx: commands.Context,
     """Inform the user about a designated channel if they did not invoke a
     subcommand of this one.
     """
-    if ctx.invoked_subcommand is ctx.command:
-        if channel:
-            description = f"The current {name} is {channel.mention}. You can use `{ctx.command.qualified_name} set [channel]` to change it, or `{ctx.command.qualified_name} unset` to reset it."
-        else:
-            description = f"There currently is no {name}. You can use `{ctx.command.qualified_name} set [channel]` to set one."
-        await ctx.send(embed=discord.Embed(
-            color=colors.INFO,
-            title=name.capitalize(),
-            description=description,
-        ))
+    if channel:
+        description = f"The current {name} is {channel.mention}. You can use `{ctx.command.qualified_name} set [channel]` to change it, or `{ctx.command.qualified_name} unset` to reset it."
+    else:
+        description = f"There currently is no {name}. You can use `{ctx.command.qualified_name} set [channel]` to set one."
+    await ctx.send(embed=discord.Embed(
+        color=colors.INFO,
+        title=name.capitalize(),
+        description=description,
+    ))
 
 
 async def desig_chan_set(ctx: commands.Context,

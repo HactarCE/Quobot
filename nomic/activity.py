@@ -1,21 +1,27 @@
-from typing import Dict, Optional
+from typing import Optional
 import discord
 
-from .base import BaseGame
 from .playerdict import PlayerDict
+from .repoman import GameRepoManager
 import utils
 
 
-class ActivityTracker(BaseGame):
+class ActivityTracker(GameRepoManager):
 
-    def init_data(self, data: Optional[Dict]):
-        self.player_activity = PlayerDict(self, data)
+    def load(self):
+        db = self.get_db('player_activity')
+        self.player_activity = PlayerDict(self, db)
+
+    def save(self):
+        db = self.get_db('player_activity')
+        db.replace(self.player_activity.export())
+        db.save()
 
     def record_activity(self, user: discord.Member) -> None:
         """Mark a player as being active right now."""
         self.assert_locked()
         self.player_activity[user] = utils.now()
-        self.need_save()
+        self.save()
 
     def get_activity_diff(self, user: discord.Member) -> Optional[int]:
         """Get the number of seconds since a player was last active, or None if
@@ -38,6 +44,3 @@ class ActivityTracker(BaseGame):
 
     def is_inactive(self, user: discord.Member) -> bool:
         return not self.is_active(user)
-
-    def export(self) -> dict:
-        return self.player_activity.export()

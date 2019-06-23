@@ -1,6 +1,7 @@
 import json
 from os import makedirs, path, remove, rename
 from tempfile import mkstemp
+from typing import Optional
 from datetime import datetime
 
 from utils import l
@@ -59,7 +60,7 @@ class DB(dict):
     - filepath -- str
     """
 
-    def __init__(self, db_name: str, do_not_instantiate_directly=None):
+    def __init__(self, db_name: str, db_path: Optional[str] = None, do_not_instantiate_directly=None):
         """Do not instantiate this class directly; use database.get_db()
         instead.
         """
@@ -67,12 +68,15 @@ class DB(dict):
             # I'm not sure whether TypeError is really the best choice here.
             raise TypeError("Do not instantiate DB object directly; use get_db() instead")
         self.name = db_name
-        self.filepath = path.join(DATA_DIR, db_name + '.json')
+        self.filepath = path.join(db_path or DATA_DIR, db_name + '.json')
         self.reload()
 
-    def reload(self) -> None:
+    def replace(self, new_data: dict) -> None:
         self.clear()
-        self.update(load_data(self.filepath))
+        self.update(new_data)
+
+    def reload(self) -> None:
+        self.replace(load_data(self.filepath))
 
     def save(self) -> None:
         save_data(self.filepath, self)
@@ -81,7 +85,7 @@ class DB(dict):
 _DATABASES = {}
 
 
-def get_db(db_name: str) -> DB:
+def get_db(db_name: str, db_path: Optional[str] = None) -> DB:
     if db_name not in _DATABASES:
-        _DATABASES[db_name] = DB(db_name, 'ok')
+        _DATABASES[db_name] = DB(db_name, db_path, 'ok')
     return _DATABASES[db_name]

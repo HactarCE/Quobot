@@ -5,7 +5,7 @@ import discord
 import functools
 import re
 
-from .base import BaseGame
+from .repoman import GameRepoManager
 from constants import colors
 import utils
 
@@ -180,20 +180,27 @@ class Rule(_Rule):
         return id(self)
 
 
-class RuleManager(BaseGame):
+class RuleManager(GameRepoManager):
 
-    def init_data(self, rule_data: Optional[dict]):
-        if rule_data:
-            self.rules = {}
-            for tag, rule in rule_data.items():
+    def load(self):
+        db = self.get_db('rules')
+        self.rules_channel = db.get('channel')
+        if self.rules_channel:
+            self.rules_channel = self.guild.get_channel(self.rules_channel)
+        self.rules = {}
+        if db.get('rules'):
+            for tag, rule in db['rules'].items():
                 self.rules[tag] = Rule(game=self, **rule)
         else:
-            self.rules = {
-                'root': {'tag': 'root', 'title': None, 'content': None},
-            }
+            self.rules['root'] = Rule(game=self, tag='root', title=None, content=None)
 
-    def export(self) -> dict:
-        return utils.sort_dict({k: r.export() for k, r in self.rules.items()})
+    def save(self):
+        db = self.get_db('rules')
+        db.replace(OrderedDict(
+            channel=self.rules_channel and self.rules_channel.id,
+            rules=utils.sort_dict({k: r.export() for k, r in self.rules.items()}),
+        ))
+        db.save()
 
     async def refresh_rule(self, *rules: Rule):
         """Update the messages for one or more proposals.
@@ -243,7 +250,7 @@ class RuleManager(BaseGame):
             for embed in rule.embeds:
                 m = await self.rules_channel.send(embed=embed)
                 rule.message_ids.append(m.id)
-        self.need_save()
+        self.save()
 
     def get_rule(self, tag: str) -> Optional[Rule]:
         return tag != 'root' and self.rules.get(tag)

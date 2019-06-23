@@ -23,11 +23,13 @@ class Quantities(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.group('quantities', aliases=['$', 'c', 'currencies', 'currency', 'q', 'quan', 'quantity'])
+    async def cog_check(self, ctx):
+        return nomic.Game(ctx).ready
+
+    @commands.group('quantities', aliases=['$', 'c', 'currencies', 'currency', 'q', 'quan', 'quantity'], invoke_without_command=True)
     async def quantities(self, ctx):
         """Manage game quantities."""
-        if ctx.invoked_subcommand is None:
-            await invoke_command_help(ctx)
+        await invoke_command_help(ctx)
 
     ########################################
     # INFO COMMANDS
