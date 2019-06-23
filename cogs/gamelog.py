@@ -24,19 +24,20 @@ class GameLog(commands.Cog):
         """
         game = nomic.Game(ctx)
         if comment:
-            m, response = await utils.discord.get_confirm_embed(
-                ctx,
-                title="Record comment in log?",
-                description=comment,
-            )
-            if response != 'y':
-                await utils.discord.edit_embed_for_response(
-                    m, response, title_fomat="Comment {}"
-                )
-                return
+            # m, response = await utils.discord.get_confirm_embed(
+            #     ctx,
+            #     title="Record comment in log?",
+            #     description=comment,
+            # )
+            # if response != 'y':
+            #     await utils.discord.edit_embed_for_response(
+            #         m, response, title_fomat="Comment {}"
+            #     )
+            #     return
             async with game:
                 await game.log(f"{utils.discord.fake_mention(ctx.author)} commented: **{comment.strip()}**")
-            await m.edit(embed=discord.Embed(
+            # await m.edit(embed=discord.Embed(
+            await ctx.send(embed=discord.Embed(
                 color=colors.SUCCESS,
                 title="Comment recorded",
                 description=comment,
