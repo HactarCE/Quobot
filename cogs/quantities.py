@@ -82,7 +82,7 @@ class Quantities(commands.Cog):
         await utils.discord.send_split_embed(ctx, embed)
 
     @quantities.command('add', aliases=['create'])
-    # @commands.check(utils.discord.is_admin)  # FIXME uncomment for release
+    @commands.check(utils.discord.is_admin)
     async def add_quantity(self, ctx, quantity_name: str, *aliases: str):
         """Create a new quantity."""
         game = nomic.Game(ctx)
@@ -98,7 +98,8 @@ class Quantities(commands.Cog):
         if response == 'y':
             async with game:
                 try:
-                    game.add_quantity(quantity_name, aliases)
+                    quantity = game.add_quantity(quantity_name, aliases)
+                    await game.log_quantity_add(ctx.author, quantity)
                 except ValueError as exc:
                     raise discord.UserInputError(str(exc))
         await m.edit(embed=discord.Embed(
@@ -108,7 +109,7 @@ class Quantities(commands.Cog):
         ))
 
     @quantities.command('remove', aliases=['del', 'delete', 'rm'])
-    # @commands.check(utils.discord.is_admin)  # FIXME uncomment for release
+    @commands.check(utils.discord.is_admin)
     async def remove_quantity(self, ctx, quantity: QuantityConverter()):
         """Delete a quantity."""
         game = nomic.Game(ctx)
@@ -120,13 +121,14 @@ class Quantities(commands.Cog):
         if response == 'y':
             async with game:
                 game.remove_quantity(quantity)
+                await game.log_quantity_remove(ctx.author, quantity)
         await m.edit(embed=discord.Embed(
             color=colors.YESNO[response],
             title=f"Deletion of quantity {quantity.name!r} {strings.YESNO[response]}",
         ))
 
     @quantities.command('rename', aliases=['setname'])
-    # @commands.check(utils.discord.is_admin)  # FIXME uncomment for release
+    @commands.check(utils.discord.is_admin)
     async def rename_quantity(self, ctx, quantity: QuantityConverter(), new_name: str):
         """Rename a quantity."""
         game = nomic.Game(ctx)
@@ -138,21 +140,25 @@ class Quantities(commands.Cog):
         )
         if response == 'y':
             async with game:
+                old_name = quantity.name
                 quantity.rename(new_name)
+                await game.log_quantity_rename(ctx.author, old_name, new_name)
         await m.edit(embed=discord.Embed(
             color=colors.YESNO[response],
             title=f"Renaming of quantity {quantity.name!r} {strings.YESNO[response]}",
         ))
 
     @quantities.command('setaliases', aliases=['setalias'])
-    # @commands.check(utils.discord.is_admin)  # FIXME uncomment for release
+    @commands.check(utils.discord.is_admin)
     async def set_quantity_aliases(self, ctx, quantity: QuantityConverter(), *new_aliases: str):
         """Change a quantity's aliases."""
         game = nomic.Game(ctx)
         new_aliases = [s.lower() for s in new_aliases]
         self._check_quantity_names(game, new_aliases, quantity)
         async with game:
+            old_aliases = quantity.aliases
             quantity.set_aliases(new_aliases)
+            await game.log_quantity_change_aliases(ctx.author, quantity, old_aliases, quantity.aliases)
         await ctx.message.add_reaction(emoji.SUCCESS)
 
     ########################################
@@ -219,7 +225,8 @@ class Quantities(commands.Cog):
                        *, reason: str = ''):
         game = nomic.Game(ctx)
         positive = amount >= 0
-        new_amount = quantity.get(user) + amount
+        old_amount = quantity.get(user)
+        new_amount = old_amount + amount
         description = f"**{'+' if positive else '-'}{abs(amount)} {quantity.name}**"
         description += f" {'to' if positive else 'from'} {user.mention}"
         ask_description = description + f" (will be **{new_amount}**)"
@@ -234,6 +241,7 @@ class Quantities(commands.Cog):
                 # the beginning of this function's execution.
                 new_amount = quantity.get(user) + amount
                 quantity.set(user, new_amount)
+                await game.log_quantity_set_value(ctx.author, quantity, user, old_amount, new_amount)
                 description += f" (now **{new_amount}**)"
         await m.edit(embed=discord.Embed(
             color=colors.YESNO[response],

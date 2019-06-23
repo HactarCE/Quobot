@@ -59,6 +59,9 @@ class Quantity(_Quantity):
     def get(self, player: discord.Member):
         return self.players.get(player, 0)
 
+    def __str__(self):
+        return f"quantity **{self.name}**"
+
     def __lt__(self, other):
         return self.name < other.name
 
@@ -95,12 +98,13 @@ class QuantityManager(GameRepoManager):
         aliases = [s.lower() for s in aliases]
         for name in [quantity_name] + aliases:
             self._check_quantity_name(name)
-        self.quantities[quantity_name] = Quantity(
+        self.quantities[quantity_name] = quantity = Quantity(
             game=self,
             name=quantity_name,
             aliases=aliases,
         )
         self.save()
+        return quantity
 
     def rename_quantity(self, quantity: Quantity, new_name: str):
         self.assert_locked()
@@ -122,7 +126,7 @@ class QuantityManager(GameRepoManager):
         self.assert_locked()
         for name in new_aliases:
             self._check_quantity_name(name, ignore=quantity)
-        quantity.aliases = new_aliases
+        quantity.aliases = sorted(new_aliases)
         self.save()
 
     def get_quantity(self, name: str) -> Optional[Quantity]:
@@ -143,35 +147,39 @@ class QuantityManager(GameRepoManager):
             if self.get_quantity(name):
                 raise ValueError(f"Quantity name {name!r} is already in use")
 
-    async def log_quantity_add(self, quantity: Quantity, player: discord.Member):
-        self.assert_locked()
-        # TODO: log it!
+    async def log_quantity_add(self, agent: discord.Member, quantity: Quantity):
+        agent = utils.discord.fake_mention(agent)
+        await self.log(f"{agent} added a new quantity {quantity} with aliases {quantity.aliases!r}")
 
-    async def log_quantity_remove(self, quantity: Quantity, player: discord.Member):
-        self.assert_locked()
-        # TODO: log it!
+    async def log_quantity_remove(self, agent: discord.Member, quantity: Quantity):
+        agent = utils.discord.fake_mention(agent)
+        await self.log(f"{agent} removed {quantity}")
 
     async def log_quantity_rename(self,
-                                  quantity: Quantity,
-                                  player: discord.Member,
+                                  agent: discord.Member,
                                   old_name: str,
                                   new_name: str):
-        self.assert_locked()
-        # TODO: log it!
+        agent = utils.discord.fake_mention(agent)
+        await self.log(f"{agent} renamed quantity **{old_name}** to **{new_name}**")
 
     async def log_quantity_change_aliases(self,
+                                          agent: discord.Member,
                                           quantity: Quantity,
-                                          player: discord.Member,
                                           old_aliases: List[str],
                                           new_aliases: List[str]):
-        self.assert_locked()
-        # TODO: log it!
+        agent = utils.discord.fake_mention(agent)
+        await self.log(f"{agent} changed the aliases of {quantity} from {old_aliases!r} to {new_aliases!r}")
 
     async def log_quantity_set_value(self,
-                                     quantity: Quantity,
                                      agent: discord.Member,
+                                     quantity: Quantity,
                                      player: discord.Member,
                                      old_value: int,
                                      new_value: int):
-        self.assert_locked()
-        # TODO: log it!
+        agent = utils.discord.fake_mention(agent)
+        player = utils.discord.fake_mention(player)
+        if new_value >= old_value:
+            diff = f'+{new_value - old_value}'
+        else:
+            diff = str(new_value - old_value)
+        await self.log(f"{agent} changed changed the amount of {quantity} belonging to {player} from {old_value!r} to {new_value!r} (**{diff}**)")
