@@ -258,7 +258,7 @@ class Quantities(commands.Cog):
         for name in names:
             if len(name) > 32:
                 raise commands.UserInputError(f"Quantity name {name!r} is too long")
-            if not re.match(r'[a-z][0-9a-z\-_]+', name):
+            if not re.match(r'[a-z][0-9a-z\-_]*', name):
                 raise commands.UserInputError(f"Quantity name {name!r} is invalid; quantity names and aliases may only contain lowercase letters, numbers, hyphens, or underscores, and must begin with a lowercase letter")
             if not (ignore_quantity and name in ignore_quantity.aliases):
                 if game.get_quantity(name):

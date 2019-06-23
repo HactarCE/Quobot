@@ -141,7 +141,7 @@ class QuantityManager(GameRepoManager):
         # TODO: this is duplicated in cogs.quantities
         if len(name) > 32:
             raise ValueError(f"Quantity name {name!r} is too long")
-        if not re.match(r'[a-z][0-9a-z\-_]+', name):
+        if not re.match(r'[a-z][0-9a-z\-_]*', name):
             raise ValueError(f"Quantity name {name!r} is invalid; quantity names and aliases may only contain lowercase letters, numbers, hyphens, or underscores, and must begin with a lowercase letter")
         if not (ignore and name in ignore.aliases):
             if self.get_quantity(name):
@@ -149,7 +149,7 @@ class QuantityManager(GameRepoManager):
 
     async def log_quantity_add(self, agent: discord.Member, quantity: Quantity):
         agent = utils.discord.fake_mention(agent)
-        await self.log(f"{agent} added a new quantity {quantity} with aliases {quantity.aliases!r}")
+        await self.log(f"{agent} added a new {quantity} with aliases {quantity.aliases!r}")
 
     async def log_quantity_remove(self, agent: discord.Member, quantity: Quantity):
         agent = utils.discord.fake_mention(agent)
@@ -179,7 +179,10 @@ class QuantityManager(GameRepoManager):
         agent = utils.discord.fake_mention(agent)
         player = utils.discord.fake_mention(player)
         if new_value >= old_value:
-            diff = f'+{new_value - old_value}'
+            verb = 'gave'
+            preposition = 'to'
         else:
-            diff = str(new_value - old_value)
-        await self.log(f"{agent} changed changed the amount of {quantity} belonging to {player} from {old_value!r} to {new_value!r} (**{diff}**)")
+            verb = 'took'
+            preposition = 'from'
+        amount = abs(new_value - old_value)
+        await self.log(f"{agent} {verb} **{amount}** of {quantity} {preposition} {player} (was {old_value}; now {new_value})")
