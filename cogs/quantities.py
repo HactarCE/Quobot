@@ -81,7 +81,7 @@ class Quantities(commands.Cog):
             )
         await utils.discord.send_split_embed(ctx, embed)
 
-    @quantities.command('add', aliases=['create'])
+    @quantities.command('new', aliases=['add', 'create'])
     @commands.check(utils.discord.is_admin)
     async def add_quantity(self, ctx, quantity_name: str, *aliases: str):
         """Create a new quantity."""

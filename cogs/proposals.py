@@ -113,7 +113,7 @@ class Proposals(commands.Cog):
 
     @proposals.command('submit', aliases=['sub'], rest_is_raw=True)
     async def submit_proposal__submit(self, ctx, *, content: str):
-        """Submit a proposal.
+        """Submit a new proposal.
 
         Example usage:
         ```
@@ -128,7 +128,7 @@ class Proposals(commands.Cog):
 
     @commands.command('propose', rest_is_raw=True)
     async def submit_proposal__propose(self, ctx, *, content: str):
-        """Submit a proposal. See `proposal submit`."""
+        """Submit a new proposal. See `proposal submit`."""
         await self._submit_proposal(ctx, content)
 
     @commands.Cog.listener()
