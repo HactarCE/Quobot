@@ -71,11 +71,11 @@ class BaseGame(abc.ABC):
             raise RuntimeError("Expected {self} to be locked by current thread, but it isn't")
 
     @abc.abstractmethod
-    async def load_guild_data(self):
+    def load(self):
         ...
 
     @abc.abstractmethod
-    async def save(self):
+    def save(self):
         ...
 
     def __lt__(self, other):

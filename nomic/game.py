@@ -13,7 +13,8 @@ class Game(
 ):
     """A Nomic game, including proposals, rules, etc."""
 
-    def load_guild_data(self):
+    def load(self):
+        self.assert_locked()
         ActivityTracker.load(self)
         GameFlagManager.load(self)
         ProposalManager.load(self)

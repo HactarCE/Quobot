@@ -56,7 +56,7 @@ class GameRepoManager(BaseGame):
                 l.info(f"Initializing repository branch for {self.guild.name}")
                 await self.repo.setup()
                 l.info(f"Loading data files for {self.guild.name}")
-                self.load_guild_data()
+                self.load()
                 if not path.isdir(self.get_file('data')):
                     mkdir(self.get_file('data'))
                 if not path.isdir(self.get_file('logs')):

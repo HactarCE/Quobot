@@ -393,12 +393,16 @@ class ProposalManager(GameRepoManager):
         self.save()
         await (await proposal.fetch_message()).delete()
 
-    async def log_proposal_submit(self, agent: discord.Member, proposal: Proposal):
+    async def log_proposal_submit(self,
+                                  agent: discord.Member,
+                                  proposal: Proposal):
         await self.commit_proposals_and_log(
             agent, "submitted", proposal, link_to_commit=True
         )
 
-    async def log_proposal_permadel(self, agent: discord.Member, proposal: Proposal):
+    async def log_proposal_permadel(self,
+                                    agent: discord.Member,
+                                    proposal: Proposal):
         await self.commit_proposals_and_log(
             agent, "permanently deleted", proposal, link_to_proposal=False, link_to_commit=True
         )
