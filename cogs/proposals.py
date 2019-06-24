@@ -1,4 +1,5 @@
 from discord.ext import commands
+from StringIO import StringIO
 from typing import List, Optional
 import asyncio
 import discord
@@ -35,6 +36,7 @@ class Proposals(commands.Cog):
 
     @commands.group('proposals', aliases=['p', 'pr', 'prop', 'proposal'], invoke_without_command=True)
     async def proposals(self, ctx):
+        """Manage proposals."""
         await invoke_command_help(ctx)
 
     ########################################
@@ -44,6 +46,7 @@ class Proposals(commands.Cog):
     @proposals.group('channel', aliases=['chan'], invoke_without_command=True)
     @commands.check(utils.discord.is_admin)
     async def channel(self, ctx):
+        """Manage the proposals channel."""
         await utils.commands.desig_chan_show(
             ctx,
             "proposals channel",
@@ -52,6 +55,7 @@ class Proposals(commands.Cog):
 
     @channel.command('set')
     async def set_channel(self, ctx, new_channel: discord.TextChannel = None):
+        """Set the proposals channel."""
         await utils.commands.desig_chan_set(
             ctx,
             "proposals channel",
@@ -62,6 +66,7 @@ class Proposals(commands.Cog):
 
     @channel.command('unset', aliases=['reset'])
     async def unset_channel(self, ctx):
+        """Unset the proposals channel."""
         await utils.commands.desig_chan_set(
             ctx,
             "proposals channel",
@@ -157,7 +162,10 @@ class Proposals(commands.Cog):
 
     async def _submit_proposal(self, ctx, content: str):
         game = nomic.Game(ctx)
-        content = content.strip()
+        if ctx.message.attachments:
+            content = (await ctx.message.attachments[0].read()).decode().strip()
+        else:
+            content = content.strip()
         if not content:
             if ctx.channel == game.proposals_channel:
                 await ctx.send(embed=discord.Embed(
@@ -167,21 +175,22 @@ class Proposals(commands.Cog):
                 ), delete_after=5)
                 return
             m, response, content = await utils.discord.query_content(
-                ctx, title="Write the contents of your new proposal here:",
+                ctx, allow_file=True,
+                title="Write the contents of your new proposal here, or attach a file:",
             )
             if response != 'y':
                 await utils.discord.edit_embed_for_response(
                     m, response, title_format="Proposal submission {}"
                 )
                 return
+        self._check_proposal_content(content)
         m, response = await utils.discord.get_confirm_embed(
             ctx, title="Submit new proposal?", description=content,
         )
         if response == 'y':
             async with game:
                 proposal = await game.add_proposal(
-                    author=ctx.author,
-                    content=content,
+                    author=ctx.author, content=content,
                 )
                 await game.log_proposal_submit(ctx.author, proposal)
         if ctx.channel.id == game.proposals_channel.id:
@@ -209,34 +218,38 @@ class Proposals(commands.Cog):
         ```
         """
         if not (await utils.discord.is_admin(ctx) or ctx.author == proposal.author):
-            # TODO test this path
             raise commands.UserInputError("You cannot edit someone else's proposal")
         game = nomic.Game(ctx)
-        new_content = new_content.strip()
+        if ctx.message.attachments:
+            new_content = (await ctx.message.attachments[0].read()).decode().strip()
+        else:
+            new_content = new_content.strip()
         if not new_content:
             if ctx.channel == game.proposals_channel:
                 await ctx.send(embed=discord.Embed(
                     color=colors.ERROR,
                     title="Use another channel",
-                    description=f"Either include the new contents within the same message as the command, or use another channel to edit a proposal.",
+                    description=f"Either include the new contents within the same message as the command, attach the new contents as a file, or use another channel to edit a proposal.",
                 ), delete_after=5)
                 return
             await ctx.send(embed=discord.Embed(
                 color=colors.INFO,
-                title=f"Current contents of proposal #{proposal.n}",
-                description=f'```\n{proposal.content}\n```'
+                title=f"Current contents of {proposal}",
+                description=utils.discord.escape_markdown(proposal.content),
             ))
             m, response, new_content = await utils.discord.query_content(
-                ctx, title=f"Write the new contents for proposal #{proposal.n} here:",
+                ctx, allow_file=True,
+                title=f"Write the new contents for {proposal} here, or attach a file:",
             )
             if response != 'y':
                 await utils.discord.edit_embed_for_response(
                     m, response, title_format="Proposal edit {}"
                 )
                 return
+        self._check_proposal_content(new_content)
         m, response = await utils.discord.get_confirm_embed(
             ctx,
-            title=f"Replace contents of proposal #{proposal.n}?",
+            title=f"Replace contents of {proposal}?",
             description=new_content,
         )
         if response == 'y':
@@ -248,9 +261,13 @@ class Proposals(commands.Cog):
         else:
             await utils.discord.edit_embed_for_response(
                 m, response,
-                title_format=f"Edit to proposal #{proposal.n} {{}}",
+                title_format=f"Edit to {proposal} {{}}",
                 description=new_content,
             )
+
+    def _check_proposal_content(self, content):
+        if len(content) > 1000:
+            raise commands.UserInputError(f"Proposal content must be 1000 characters or smaller; {len(content)} is too much.")
 
     ########################################
     # VOTING
@@ -304,7 +321,7 @@ class Proposals(commands.Cog):
         proposals = sorted(set(proposals))
         for proposal in proposals:
             if proposal.status != nomic.ProposalStatus.VOTING:
-                raise commands.UserInputError(f"Cannot vote on proposal #{proposal.n} because it is closed for voting")
+                raise commands.UserInputError(f"Cannot vote on {proposal} because it is closed for voting")
         failed = False
         async with game:
             for proposal in proposals:
@@ -443,13 +460,12 @@ class Proposals(commands.Cog):
         WARNING: This **cannot** be undone.
         """
         if not (await utils.discord.is_admin(ctx) or ctx.author == proposal.author):
-            # TODO test this path
             raise commands.UserInputError("You cannot permanently delete someone else's proposal")
         game = nomic.Game(ctx)
         if proposal.n != len(game.proposals):
             raise commands.UserInputError("Can only permanently delete most recent proposal")
         m, response = await utils.discord.get_confirm_embed(ctx,
-            title=f"Permanently delete proposal #{proposal.n}?",
+            title=f"Permanently delete {proposal}?",
             content="This cannot be undone."
         )
         await utils.discord.edit_embed_for_response(
@@ -492,6 +508,29 @@ class Proposals(commands.Cog):
             title=title,
             description=description,
         ))
+
+    @proposals.command('download', aliases=['dl'])
+    async def download_proposal(self, ctx, *proposals: ProposalConverter):
+        """Download the raw content of one or more proposals."""
+        proposals = sorted(set(proposals))
+        if not proposals:
+            await invoke_command_help(ctx)
+            return
+        title = "Proposal download"
+        description = "Proposal"
+        if len(proposals) != 1:
+            title += "s"
+            description += "s"
+        description += ' ' + ', '.join(p.n for p in proposals)
+        await ctx.send(embed=discord.Embed(
+            color=colors.INFO,
+            title=title,
+            description=description,
+        ), files=[
+            discord.File(StringIO(p.content),
+                         f"proposal_{p.n}.md")
+            for p in proposals
+        ])
 
     @proposals.command('refresh', aliases=['rf'])
     async def refresh_proposal(self, ctx, *proposals: ProposalConverter):
