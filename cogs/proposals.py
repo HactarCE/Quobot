@@ -1,5 +1,5 @@
 from discord.ext import commands
-from StringIO import StringIO
+from io import StringIO
 from typing import List, Optional
 import asyncio
 import discord
@@ -235,7 +235,7 @@ class Proposals(commands.Cog):
             await ctx.send(embed=discord.Embed(
                 color=colors.INFO,
                 title=f"Current contents of {proposal}",
-                description=utils.discord.escape_markdown(proposal.content),
+                description=discord.utils.escape_markdown(proposal.content),
             ))
             m, response, new_content = await utils.discord.query_content(
                 ctx, allow_file=True,
@@ -267,7 +267,7 @@ class Proposals(commands.Cog):
 
     def _check_proposal_content(self, content):
         if len(content) > 1000:
-            raise commands.UserInputError(f"Proposal content must be 1000 characters or smaller; {len(content)} is too much.")
+            raise commands.UserInputError(f"Proposal content must be 1000 characters or smaller; {len(content)} is too many.")
 
     ########################################
     # VOTING
@@ -464,9 +464,10 @@ class Proposals(commands.Cog):
         game = nomic.Game(ctx)
         if proposal.n != len(game.proposals):
             raise commands.UserInputError("Can only permanently delete most recent proposal")
-        m, response = await utils.discord.get_confirm_embed(ctx,
+        m, response = await utils.discord.get_confirm_embed(
+            ctx,
             title=f"Permanently delete {proposal}?",
-            content="This cannot be undone."
+            content="This cannot be undone.",
         )
         await utils.discord.edit_embed_for_response(
             m, response, title_format="Permanent proposal deletion {}"
@@ -521,16 +522,31 @@ class Proposals(commands.Cog):
         if len(proposals) != 1:
             title += "s"
             description += "s"
-        description += ' ' + ', '.join(p.n for p in proposals)
-        await ctx.send(embed=discord.Embed(
-            color=colors.INFO,
-            title=title,
-            description=description,
-        ), files=[
+        description += ' ' + ', '.join(str(p.n) for p in proposals)
+        await ctx.send(files=[
             discord.File(StringIO(p.content),
                          f"proposal_{p.n}.md")
             for p in proposals
         ])
+
+    @proposals.command('link', aliases=['ln'])
+    async def link_proposal(self, ctx, *proposals: ProposalConverter):
+        """Link to one or more proposals."""
+        proposals = sorted(set(proposals))
+        if not proposals:
+            await invoke_command_help(ctx)
+            return
+        description = ''
+        for p in proposals:
+            description += f"**#{p.n}**"
+            description += f" \N{EN DASH} **[on Discord]({p.discord_link})**"
+            description += f" \N{EN DASH} **[on GitHub]({p.github_link})**"
+            description += "\n"
+        await ctx.send(embed=discord.Embed(
+            color=colors.INFO,
+            title="Proposal links",
+            description=description,
+        ))
 
     @proposals.command('refresh', aliases=['rf'])
     async def refresh_proposal(self, ctx, *proposals: ProposalConverter):

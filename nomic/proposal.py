@@ -9,7 +9,7 @@ import functools
 from .gameflags import GameFlagManager
 from .playerdict import PlayerDict
 from .repoman import GameRepoManager
-from constants import colors, emoji, strings
+from constants import colors, emoji, info, strings
 import utils
 
 
@@ -189,6 +189,10 @@ class Proposal(_Proposal):
         )
 
     @property
+    def github_link(self):
+        return f'{info.GITHUB_REPO_LINK}/blob/{self.game.repo.name}/proposals.md#{self.n}'
+
+    @property
     def embed(self) -> discord.Embed:
         """Return an embed displaying this proposal."""
         # Make the title; e.g. "Proposal #10   --    Passed"
@@ -249,15 +253,15 @@ class Proposal(_Proposal):
 
     @property
     def markdown(self):
-        s = f"<a name='{self.n}'/> "
-        s += '\n\n'
+        s = f"<a name='{self.n}'/>"
+        s += "\n\n"
         s += f"## #{self.n}"
         if self.status != ProposalStatus.VOTING:
             s += f" \N{EM DASH} {self.status.value.capitalize()}"
-        s += '\n\n'
+        s += "\n\n"
         if self.status != ProposalStatus.DELETED:
             s += self.content
-            s += '\n\n'
+            s += "\n\n"
         return s
 
     def __str__(self):
