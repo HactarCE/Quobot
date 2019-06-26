@@ -101,7 +101,7 @@ class Quantities(commands.Cog):
                     quantity = game.add_quantity(quantity_name, aliases)
                     await game.log_quantity_add(ctx.author, quantity)
                 except ValueError as exc:
-                    raise discord.UserInputError(str(exc))
+                    raise commands.UserInputError(str(exc))
         await m.edit(embed=discord.Embed(
             color=colors.YESNO[response],
             title=f"New quantity {quantity_name!r} {strings.YESNO[response]}",

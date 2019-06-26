@@ -11,6 +11,7 @@ class GameFlags:
     allow_vote_abstain: bool = False
     allow_vote_change: bool = True
     allow_vote_multi: bool = False
+    auto_upload: bool = True
     player_activity_cutoff: int = 24
 
     def export(self) -> dict:

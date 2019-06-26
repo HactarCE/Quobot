@@ -36,15 +36,15 @@ class GitHub(commands.Cog):
         if self.upload_task_ready:
             l.info(f"Performing periodic upload")
             for game in self.games:
-                async with game:
-                    await asyncio.shield(game.upload_all())
+                if game.flags.auto_upload:
+                    async with game:
+                        await asyncio.shield(game.upload_all())
         else:
             self.upload_task_ready = True
         now = datetime.now()
-        minute = now.minute // UPLOAD_INTERVAL * UPLOAD_INTERVAL
-        future = datetime.now().replace(
-            minute=minute, second=0, microsecond=0
-        ) + timedelta(minutes=UPLOAD_INTERVAL)
+        future = (now + timedelta(minutes=UPLOAD_INTERVAL + 1))
+        minute = future.minute // UPLOAD_INTERVAL * UPLOAD_INTERVAL
+        future = future.replace(minute=minute, second=0, microsecond=0)
         l.info(f"Scheduling next upload at {future.strftime('%H:%M')}")
         self.upload_task.change_interval(seconds=(future - now).seconds)
 

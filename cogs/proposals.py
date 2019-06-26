@@ -394,7 +394,7 @@ class Proposals(commands.Cog):
         """Reopen one or more proposals for voting."""
         await self._set_proposal_status(ctx, nomic.ProposalStatus.VOTING, proposals)
 
-    @proposals.command('remove', aliases=['rm', 'del'])
+    @proposals.command('remove', aliases=['del', 'delete', 'rm'])
     async def remove_proposal_1(self, ctx,
                                 proposals: commands.Greedy[ProposalConverter]):
         """Mark one or more proposals as deleted."""
