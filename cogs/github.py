@@ -1,11 +1,16 @@
-from discord.ext import commands
+from datetime import datetime, timedelta
+from discord.ext import commands, tasks
 import asyncio
 import discord
 
 from cogs.general import invoke_command_help
 from constants import colors, emoji
+from utils import l
 import nomic
 import utils
+
+
+UPLOAD_INTERVAL = 30
 
 
 class GitHub(commands.Cog):
@@ -13,13 +18,41 @@ class GitHub(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        for guild in bot.guilds:
+        for game in self.games:
+            asyncio.run_coroutine_threadsafe(game.setup(bot.loop), bot.loop)
+        self.upload_task_ready = False
+        self.upload_task.start()
+
+    @property
+    def games(self):
+        """An iterator for all Nomic games that this bot manages."""
+        for guild in self.bot.guilds:
             game = nomic.Game(guild)
             if game.repo.exists:
-                asyncio.run_coroutine_threadsafe(game.setup(), bot.loop)
+                yield game
+
+    @tasks.loop(seconds=0)
+    async def upload_task(self):
+        if self.upload_task_ready:
+            l.info(f"Performing periodic upload")
+            for game in self.games:
+                async with game:
+                    await asyncio.shield(game.upload_all())
+        else:
+            self.upload_task_ready = True
+        now = datetime.now()
+        minute = now.minute // UPLOAD_INTERVAL * UPLOAD_INTERVAL
+        future = datetime.now().replace(
+            minute=minute, second=0, microsecond=0
+        ) + timedelta(minutes=UPLOAD_INTERVAL)
+        l.info(f"Scheduling next upload at {future.strftime('%H:%M')}")
+        self.upload_task.change_interval(seconds=(future - now).seconds)
 
     async def cog_check(self, ctx):
         return await utils.discord.is_admin(ctx)
+
+    def cog_unload(self):
+        self.upload_task.cancel()
 
     @commands.group(aliases=['g', 'gh', 'git'], invoke_without_command=True)
     async def github(self, ctx):
@@ -53,7 +86,7 @@ class GitHub(commands.Cog):
         """
         async with nomic.Game(ctx) as game:
             if await game.repo.is_ahead() or not await game.repo.is_clean():
-                await game.periodic_update()
+                await game.upload_all()
                 await ctx.send(embed=discord.Embed(
                     color=colors.SUCCESS,
                     title="Committed and pushed latest game data to remote",

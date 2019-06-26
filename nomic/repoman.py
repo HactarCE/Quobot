@@ -1,5 +1,5 @@
 from asyncio.subprocess import PIPE
-from datetime import datetime
+from datetime import datetime, timedelta
 from os import mkdir, path
 from typing import Tuple
 import asyncio
@@ -37,9 +37,9 @@ class GameRepoManager(BaseGame):
         super().__init__(*args, **kwargs)
         self.repo = RepoBranch(self.repo_name)
 
-    async def setup(self):
-        async with self:
-            if not self.ready:
+    async def setup(self, loop):
+        if not self.ready:
+            async with self:
                 # Test SSH connection
                 _, ssh_stderr = await (await asyncio.create_subprocess_exec(
                     'ssh', '-T', 'git@github.com',
@@ -108,10 +108,11 @@ class GameRepoManager(BaseGame):
                 last_updated=datetime.utcnow().strftime('UTC %Y-%m-%d %H:%M')
             ))
 
-    async def periodic_update(self):
+    async def upload_all(self):
         self.assert_locked()
-        await self.update_readme()
-        await self.commit_all()
+        if not await self.repo.is_clean():
+            await self.update_readme()
+            await self.commit_all()
         await self.push()
 
     async def get_last_log_file(self) -> str:
