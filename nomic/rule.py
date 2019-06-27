@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Optional, List, Set
 import discord
 import functools
+import itertools
 import re
 
 from .repoman import GameRepoManager
@@ -79,8 +80,8 @@ class Rule(_Rule):
 
     @property
     def descendants(self):
-        yield self
         for child in self.children:
+            yield child
             yield from child.descendants
 
     @property
@@ -135,13 +136,13 @@ class Rule(_Rule):
                 return format_string.format(rule=rule)
         if content is None:
             content = self.content
-        return re.sub(r'\[#([a-z0-9\-_]+)\]', replace_func, content)
+        return re.sub(r'\[%([a-z0-9\-_]+)\]', replace_func, content)
 
     def discord_link_sub(self, paragraph):
         s = self._link_sub('[**{rule.section_title}**]({rule.discord_link})', paragraph)
         if len(s) < 2000:
             return s
-        s = self._link_sub(f'**{self.section_title}**', paragraph)
+        s = self._link_sub('**{rule.section_title}**', paragraph)
         if len(s) < 2000:
             return s
         s = paragraph
@@ -156,7 +157,9 @@ class Rule(_Rule):
     @property
     def discord_content(self) -> List[str]:
         if self.tag == 'root':
-            s = '\n'.join(f"[#{rule.tag}]" for rule in self.descendants if rule != self)
+            s = "\n".join(f"[%{rule.tag}]" for rule in self.descendants)
+            link = f'{info.GITHUB_REPO_LINK}/blob/{self.game.repo.name}/rules.md'
+            s += f"\n\n[View on GitHub]({link})"
         else:
             s = self.content
         s = re.sub(r'[ \t]*(\*) ', "\N{BULLET}", s)
@@ -181,48 +184,52 @@ class Rule(_Rule):
                 color=colors.INFO,
                 title=title,
                 description=chunk,
-            ).set_footer(text=f'#{self.tag}'))
+            ).set_footer(text=f'%{self.tag}'))
         return embeds
 
     @property
     def markdown(self):
         if self.tag == 'root':
-            s = self.section_title
+            s = f"## {self.section_title}"
             s += "\n\n"
             for rule in self.descendants:
-                if rule != self:
-                    s += " " * 4 * (rule.depth - 1)
-                    s += f"* [#{rule.tag}]\n"
-            self.content = s + "\n"
+                s += " " * 4 * (rule.depth - 1)
+                s += f"* [%{rule.tag}]\n"
+            s += "\n"
         else:
-            s = f"<a name='{self.tag}'/>"
-            s += "\n\n"
-            s += "#" * (self.depth + 1)
+            s = "#" * (self.depth + 1)
+            s += f" <a name='{self.tag}'/>"
             s += f" {self.title}"
             s += "\n\n"
-            s += self.markdown_link_sub(self.content)
+            s += self.content
             s += "\n\n"
-        return s
+        return self.markdown_link_sub(s)
 
     def __str__(self):
-        return f"rule section `#{self.tag}`"
+        return f"rule section `%{self.tag}`"
 
     def __lt__(self, other):
         if self == other:
             return False
-        if not (self.parent_tag or other.parent_tag):
+        if other.tag == 'root':
             return False
+        if self.tag == 'root':
+            return True
         if self.parent == other.parent:
             return self.parent.child_tags.index(self.tag) < self.parent.child_tags.index(other.tag)
         elif self.depth > other.depth:
+            if self.parent == other:
+                return False
             return self.parent < other
         elif self.depth < other.depth:
+            if self == other.parent:
+                return True
             return self < other.parent
         else:
             return self.parent < other.parent
 
     def __eq__(self, other):
-        return self.tag == other.tag
+        return type(self) == type(other) and self.tag == other.tag
 
     def __hash__(self):
         # This isn't ideal, but it should have all the necessary properties of a
@@ -259,6 +266,7 @@ class RuleManager(GameRepoManager):
         with open(self.get_file('rules.md'), 'w') as f:
             f.write(f"# {self.guild.name} \N{EM DASH} Rules")
             f.write('\n\n')
+            f.write(self.root_rule.markdown)
             for r in self.root_rule.descendants:
                 f.write(r.markdown)
 
@@ -309,11 +317,14 @@ class RuleManager(GameRepoManager):
         May throw `TypeError`, `ValueError`, or `discord.Forbidden` exceptions.
         """
         self.assert_locked()
-        start = min(rules)
-        all_rules = self.root_rule.descendants
-        while next(all_rules) < start:
-            pass
-        repost_rules = [start] + list(all_rules)
+        repost_rules = list(rules)
+        if self.root_rule in repost_rules:
+            repost_rules.remove(self.root_rule)
+        if repost_rules:
+            start = min(repost_rules)
+            all_rules = self.root_rule.descendants
+            repost_rules = itertools.dropwhile(lambda r: r != start, all_rules)
+        repost_rules = list(repost_rules) + [self.root_rule]
         rule_messages = []
         for rule in repost_rules:
             rule_messages += await rule.fetch_messages()
@@ -333,7 +344,7 @@ class RuleManager(GameRepoManager):
 
     def get_rule(self, tag_or_section_number: str, *, tag_only: bool = False) -> Optional[Rule]:
         tag = section_number = tag_or_section_number
-        if tag.startswith('#'):
+        if tag.startswith('%'):
             tag = tag[1:]
         if tag in ('contents', 'toc'):
             return self.root_rule
@@ -493,7 +504,7 @@ class RuleManager(GameRepoManager):
                                   rule: Rule,
                                   old_tag: str):
         await self.commit_rules_and_log(
-            agent, "changed the tag of rule section `#{old_tag}` to", rule, link_to_commit=True,
+            agent, f"changed the tag of rule section `%{old_tag}` to", rule, link_to_commit=True,
         )
 
     async def log_rule_change_title(self,

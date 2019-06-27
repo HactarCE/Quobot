@@ -248,7 +248,7 @@ async def get_confirm_embed(ctx, *, timeout: int = 30, **kwargs):
     return (m, await get_confirm(ctx, m, timeout=timeout))
 
 
-async def query_content(ctx, *, timeout: int = 30, allow_file: bool = False, **kwargs):
+async def query_content(ctx, *, timeout: int = 30, allow_file: bool = False, clean_content: bool = False, **kwargs):
     """Send an embed and query the user for content.
 
     Returns a tuple (message, response, content), where response is 'y', 'n', or
@@ -267,7 +267,10 @@ async def query_content(ctx, *, timeout: int = 30, allow_file: bool = False, **k
                 timeout=timeout,
             )
             if response_type == 'message':
-                content = response.content.strip()
+                if clean_content:
+                    content = response.clean_content.strip()
+                else:
+                    content = response.content.strip()
                 if response.attachments and allow_file:
                     content = (await response.attachments[0].read()).decode().strip()
             if (response_type == 'reaction' or content.startswith(ctx.prefix) or not content):

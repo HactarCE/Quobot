@@ -15,7 +15,7 @@ class RuleConverter(commands.Converter):
     allow_root = False
     async def convert(self, ctx, argument):
         argument = argument.lower()
-        if argument.startswith('#'):
+        if argument.startswith('%'):
             argument = argument[1:]
         if argument == 'root' and not self.allow_root:
             raise commands.UserInputError(f"Root section is now allowed for this action")
@@ -48,7 +48,7 @@ class RuleLocationConverter(commands.Converter):
                 raise ValueError
         except ValueError:
             raise commands.UserInputError(f"Invalid rule location: `{argument!r}`")
-        if argument.startswith('#'):
+        if argument.startswith('%'):
             argument = argument[1:]
         rule = nomic.Game(ctx).get_rule(argument)
         if rule:
@@ -169,7 +169,7 @@ class Rules(commands.Cog):
         except (TypeError, ValueError) as e:
             raise commands.UserInputError(str(e))
         m, response, title = await utils.discord.query_content(
-            ctx, title="Write the title of the new rule:"
+            ctx, clean_content=True, title="Write the title of the new rule:",
         )
         if response != 'y':
             await utils.discord.edit_embed_for_response(
@@ -181,7 +181,7 @@ class Rules(commands.Cog):
             tag=rule_tag,
             title=title,
             content='(none)'
-        ), edit=True)
+        ), edit=False)
         if response != 'y':
             return
         async with game:
@@ -197,9 +197,13 @@ class Rules(commands.Cog):
         You can type the entire contents of the rule section, or attach a raw
         file containing its Markdown content.
         """
-        response, new_content = await self._rule_edit_wizard(ctx, rule, edit=False)
-        if response != 'y':
-            return
+        if ctx.message.attachments:
+            new_content = (await ctx.message.attachments[0].read()).decode().strip()
+            await ctx.message.add_reaction(emoji.SUCCESS)
+        else:
+            response, new_content = await self._rule_edit_wizard(ctx, rule, edit=True)
+            if response != 'y':
+                return
         async with nomic.Game(ctx) as game:
             await game.set_rule_content(rule, new_content)
             await game.log_rule_change_content(ctx.author, rule)
@@ -268,7 +272,7 @@ class Rules(commands.Cog):
         new_title = new_title.strip()
         if not new_title:
             m, response, new_title = await utils.discord.query_content(
-                ctx, title="Write the new title:"
+                ctx, clean_content=True, title="Write the new title:"
             )
             if response != 'y':
                 await utils.discord.edit_embed_for_response(
@@ -334,7 +338,7 @@ class Rules(commands.Cog):
             return
         description = ''
         for r in rules:
-            description += f"**#{r.tag}**"
+            description += f"**%{r.tag}**"
             description += " \N{EN DASH} **[on Discord]({r.discord_link})**"
             description += " \N{EN DASH} **[on GitHub]({r.github_link})**"
             description += "\n"
@@ -366,6 +370,8 @@ class Rules(commands.Cog):
                                   rules: List[nomic.Rule],
                                   repost: bool):
         game = nomic.Game(ctx)
+        if not rules:
+            rules = game.root_rule.descendants
         try:
             async with game:
                 if repost:

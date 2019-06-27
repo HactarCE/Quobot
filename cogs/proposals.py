@@ -13,7 +13,7 @@ from utils import l
 
 class ProposalConverter(commands.Converter):
     async def convert(self, ctx, argument):
-        if argument.startswith('#'):
+        if argument.startswith('%'):
             argument = argument[1:]
         try:
             proposal = nomic.Game(ctx).get_proposal(int(argument))
@@ -538,7 +538,7 @@ class Proposals(commands.Cog):
             return
         description = ''
         for p in proposals:
-            description += f"**#{p.n}**"
+            description += f"**%{p.n}**"
             description += f" \N{EN DASH} **[on Discord]({p.discord_link})**"
             description += f" \N{EN DASH} **[on GitHub]({p.github_link})**"
             description += "\n"

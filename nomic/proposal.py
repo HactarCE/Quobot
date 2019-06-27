@@ -271,7 +271,7 @@ class Proposal(_Proposal):
         return self.n < other.n
 
     def __eq__(self, other):
-        return self.n == other.n
+        return type(self) == type(other) and self.n == other.n
 
     def __hash__(self):
         # None of these values should ever change, and they should uniquely
