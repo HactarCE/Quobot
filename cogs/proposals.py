@@ -325,9 +325,9 @@ class Proposals(commands.Cog):
         failed = False
         async with game:
             for proposal in proposals:
-                old_amount = proposal.votes[user]
+                old_amount = proposal.votes.get(user)
                 if await vote_func(proposal, user, amount):
-                    new_amount = proposal.votes[user]
+                    new_amount = proposal.votes.get(user)
                     await game.log_proposal_vote(
                         ctx.author, proposal, user,
                         old_amount, new_amount,
@@ -362,9 +362,9 @@ class Proposals(commands.Cog):
                             emoji.VOTE_ABSTAIN: proposal.vote_abstain_or_remove,
                         }[payload.emoji.name]
                         async with game:
-                            old_amount = proposal.votes[member]
+                            old_amount = proposal.votes.get(member)
                             await vote_func(member)
-                            new_amount = proposal.votes[member]
+                            new_amount = proposal.votes.get(member)
                             await game.log_proposal_vote(
                                 member, proposal, member,
                                 old_amount, new_amount,
