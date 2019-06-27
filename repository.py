@@ -49,6 +49,10 @@ class RepoBranch:
                 # if results[1] or results[2]:
                 #     _bail_out(f"creating branch {self.name!r}")
                 await self._clone()
+                await self.exec_multi(
+                    ['git', 'config', '--local', 'user.email', info.GITHUB_EMAIL],
+                    ['git', 'config', '--local', 'user.name', info.NAME],
+                )
             else:
                 await self.pull()
             return self.path
