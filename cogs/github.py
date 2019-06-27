@@ -62,7 +62,7 @@ class GitHub(commands.Cog):
     @github.command(name='init')
     async def github_init(self, ctx):
         """Initialize the GitHub repository branch for this server."""
-        await nomic.Game(ctx).setup()
+        await nomic.Game(ctx).setup(self.bot.loop)
         await ctx.message.add_reaction(emoji.SUCCESS)
 
     @github.command(name='pull')
