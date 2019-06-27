@@ -162,7 +162,7 @@ class Rule(_Rule):
             s += f"\n\n[View on GitHub]({link})"
         else:
             s = self.content
-        s = re.sub(r'[ \t]*(\*) ', "\N{BULLET}", s)
+        s = re.sub(r'^([ \t]*)\* ', "    \\1\N{BULLET} ", s, flags=re.MULTILINE)
         paragraphs = map(self.discord_link_sub, s.splitlines())
         # Substitute bullet points
         chunks = ['']
@@ -413,8 +413,10 @@ class RuleManager(GameRepoManager):
         """Raises ValueError if the proposed move would result in an invalid
         rule hierarchy.
         """
+        if new_parent == rule:
+            raise ValueError("Cannot move rule into itself")
         if new_parent in rule.descendants:
-            raise ValueError("Cannot move rule into itself or its own child")
+            raise ValueError("Cannot move rule a child of itself")
 
     async def add_rule(self, parent: Rule, index: Optional[int], *, tag, **kwargs):
         self.assert_locked()
@@ -458,7 +460,7 @@ class RuleManager(GameRepoManager):
 
     async def move_rule(self, rule: Rule, new_parent: Rule, new_index: int = None):
         self.assert_locked()
-        self.check_move_rule(rule, new_parent, new_index)
+        self.check_move_rule(rule, new_parent)
         if new_index is None:
             new_index = len(new_parent.child_tags)
         rule.parent.child_tags.remove(rule.tag)

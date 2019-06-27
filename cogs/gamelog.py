@@ -1,5 +1,6 @@
 from datetime import datetime
 from discord.ext import commands
+from typing import Optional
 import discord
 
 from constants import colors, info
@@ -58,6 +59,48 @@ class GameLog(commands.Cog):
                 title="Game logs",
                 description=description,
             ))
+
+    ########################################
+    # CHANNEL COMMANDS
+    ########################################
+
+    @logs.group('channel', aliases=['chan'], invoke_without_command=True)
+    @commands.check(utils.discord.is_admin)
+    @commands.check(nomic.Game.is_ready)
+    async def channel(self, ctx):
+        """Manage the logs channel."""
+        await utils.commands.desig_chan_show(
+            ctx,
+            "logs channel",
+            nomic.Game(ctx).logs_channel
+        )
+
+    @channel.command('set')
+    async def set_channel(self, ctx, new_channel: discord.TextChannel = None):
+        """Set the logs channel."""
+        await utils.commands.desig_chan_set(
+            ctx,
+            "logs channel",
+            old_channel=nomic.Game(ctx).logs_channel,
+            new_channel=new_channel or ctx.channel,
+            callback=self._set_channel_callback,
+        )
+
+    @channel.command('unset', aliases=['reset'])
+    async def unset_channel(self, ctx):
+        """Unset the logs channel."""
+        await utils.commands.desig_chan_set(
+            ctx,
+            "logs channel",
+            old_channel=nomic.Game(ctx).logs_channel,
+            new_channel=None,
+            callback=self._set_channel_callback,
+        )
+
+    async def _set_channel_callback(self, ctx, new_channel: Optional[discord.TextChannel] = None):
+        async with nomic.Game(ctx) as game:
+            game.logs_channel = new_channel
+            game.save()
 
 
 def setup(bot):

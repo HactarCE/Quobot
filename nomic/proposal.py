@@ -6,7 +6,7 @@ from typing import Optional, Set
 import discord
 import functools
 
-from .gameflags import GameFlagManager
+from .gameflags import GameFlagsManager
 from .playerdict import PlayerDict
 from .repoman import GameRepoManager
 from constants import colors, emoji, info, strings
@@ -37,7 +37,7 @@ VOTE_TYPES = ('for', 'against', 'abstain')
 
 @dataclass
 class _Proposal:
-    game: 'ProposalManager' and GameFlagManager
+    game: 'ProposalManager' and GameFlagsManager
     n: int
     author: discord.Member
     content: str

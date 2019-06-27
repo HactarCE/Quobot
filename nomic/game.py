@@ -1,5 +1,5 @@
 from .activity import ActivityTracker
-from .gameflags import GameFlagManager
+from .gameflags import GameFlagsManager
 from .proposal import ProposalManager
 from .quantity import QuantityManager
 from .rule import RuleManager
@@ -7,6 +7,7 @@ from .rule import RuleManager
 
 class Game(
     ActivityTracker,
+    GameFlagsManager,
     ProposalManager,
     QuantityManager,
     RuleManager,
@@ -16,7 +17,7 @@ class Game(
     def load(self):
         self.assert_locked()
         ActivityTracker.load(self)
-        GameFlagManager.load(self)
+        GameFlagsManager.load(self)
         ProposalManager.load(self)
         QuantityManager.load(self)
         RuleManager.load(self)
@@ -24,7 +25,7 @@ class Game(
     def save(self):
         self.assert_locked()
         ActivityTracker.save(self)
-        GameFlagManager.save(self)
+        GameFlagsManager.save(self)
         ProposalManager.save(self)
         QuantityManager.save(self)
         RuleManager.save(self)

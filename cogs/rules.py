@@ -217,7 +217,7 @@ class Rules(commands.Cog):
         game = nomic.Game(ctx)
         new_parent, new_index = new_rule_location
         try:
-            game.check_rule_move(rule, new_parent)
+            game.check_move_rule(rule, new_parent)
         except ValueError as e:
             raise commands.UserInputError(str(e))
         m, response = await utils.discord.get_confirm_embed(

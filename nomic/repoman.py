@@ -1,11 +1,12 @@
 from asyncio.subprocess import PIPE
-from datetime import datetime, timedelta
+from datetime import datetime
 from os import mkdir, path
 from typing import Tuple
 import asyncio
+import discord
 
 from .base import BaseGame
-from constants import info
+from constants import colors, info
 from repository import RepoBranch
 from utils import l
 
@@ -157,6 +158,10 @@ class GameRepoManager(BaseGame):
             new_day = True
         year_month = timestamp.strftime('%Y_%m')
 
+        if link_to_commit:
+            link = await self.repo.get_commit_link()
+            log_text += f" ([diff]({link}))"
+
         logfile_md = path.join('logs', year_month + '.md')
         with open(self.get_file(logfile_md), 'a') as f:
             if new_month:
@@ -168,9 +173,14 @@ class GameRepoManager(BaseGame):
                 f.write("\n\n")
             f.write(f"* `{timestamp.strftime('%H:%M:%S')}` ")
             f.write(log_text)
-            if link_to_commit:
-                link = await self.repo.get_commit_link()
-                f.write(f" ([diff]({link}))")
             f.write("\n")
 
         await self.update_last_log(timestamp.year, timestamp.month, timestamp.day)
+
+        try:
+            await self.logs_channel.send(embed=discord.Embed(
+                color=colors.INFO,
+                description=log_text,
+            ))
+        except Exception:
+            pass
