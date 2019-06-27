@@ -43,7 +43,7 @@ class GitHub(commands.Cog):
             self.upload_task_ready = True
         now = datetime.now()
         future = (now + timedelta(minutes=UPLOAD_INTERVAL + 1))
-        minute = future.minute // UPLOAD_INTERVAL * UPLOAD_INTERVAL
+        minute = future.minute // UPLOAD_INTERVAL * UPLOAD_INTERVAL + 1
         future = future.replace(minute=minute, second=0, microsecond=0)
         l.info(f"Scheduling next upload at {future.strftime('%H:%M')}")
         self.upload_task.change_interval(seconds=(future - now).seconds)
