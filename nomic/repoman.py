@@ -169,7 +169,8 @@ class GameRepoManager(BaseGame):
             f.write(f"* `{timestamp.strftime('%H:%M:%S')}` ")
             f.write(log_text)
             if link_to_commit:
-                f.write(f" ([diff]({await self.repo.get_commit_link()}))")
+                link = await self.repo.get_commit_link()
+                f.write(f" ([diff]({link}))")
             f.write("\n")
 
         await self.update_last_log(timestamp.year, timestamp.month, timestamp.day)

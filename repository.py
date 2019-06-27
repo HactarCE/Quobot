@@ -161,7 +161,8 @@ class RepoBranch:
 
     async def get_commit_link(self) -> str:
         """Return a GitHub link to the last commit."""
-        return f'{info.GITHUB_REPO_LINK}/commit/{await self.get_commit_hash()}'
+        hash = await self.get_commit_hash()
+        return f'{info.GITHUB_REPO_LINK}/commit/{hash}'
 
     def get_file(self, relative_path: str) -> str:
         """Return the absolute path to a file inside this branch."""
