@@ -36,9 +36,9 @@ class RuleLocationConverter(commands.Converter):
         try:
             preposition, other_rule = argument.lower().split()
             other_rule = await RuleConverterAllowRoot().convert(ctx, other_rule)
-            if preposition in ('before', 'after') and other_rule.tag != 'root':
+            if preposition in ('before', 'above', 'after', 'below') and other_rule.tag != 'root':
                 i = other_rule.parent.child_tags.index(other_rule.tag)
-                if preposition == 'after':
+                if preposition in ('after', 'below'):
                     return other_rule.parent, i + 1
                 else:
                     return other_rule.parent, i
@@ -70,10 +70,13 @@ class Rules(commands.Cog):
         """Manage rules.
 
         When commands require a `<rule_location>`, this must be two words. The
-        first word is either `above`, `below`, or `within`, and the second word
-        is an existing rule tag. E.g. `above proposals` would put the given rule
-        section above the `proposals` section but on the same level. If no rules
-        exist, use `within root` to place a top-level rule.
+        first word is either `before`/`above`, `after`/`below`, or
+        `within`/`under`, and the second word is an existing rule tag. E.g.
+        `before proposals` or `above proposals` would put the given rule section
+        before the `proposals` section but on the same level. (`after` or
+        `below` is on the same level but below, and `within` or `under` is
+        nested beneath.) If no rules exist, use `within root` to place a
+        top-level rule.
         """
         await invoke_command_help(ctx)
 
