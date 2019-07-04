@@ -355,7 +355,7 @@ class Proposals(commands.Cog):
         if game.proposals_channel and payload.channel_id == game.proposals_channel.id:
             for proposal in game.proposals:
                 if proposal.message_id == payload.message_id:
-                    try:
+                    if payload.emoji.name in emoji.VOTES:
                         vote_func = {
                             emoji.VOTE_FOR: proposal.vote_for,
                             emoji.VOTE_AGAINST: proposal.vote_against,
@@ -369,7 +369,19 @@ class Proposals(commands.Cog):
                                 member, proposal, member,
                                 old_amount, new_amount,
                             )
-                    except KeyError:
+                    elif payload.emoji.name in (emoji.PASS, emoji.FAIL, emoji.DELETE, emoji.REOPEN):
+                        new_status = {
+                            emoji.PASS: nomic.ProposalStatus.PASSED,
+                            emoji.FAIL: nomic.ProposalStatus.FAILED,
+                            emoji.DELETE: nomic.ProposalStatus.DELETED,
+                            emoji.REOPEN: nomic.ProposalStatus.VOTING,
+                        }[payload.emoji.name]
+                        async with game:
+                            await proposal.set_status(new_status)
+                            await game.log_proposal_change_status(member, proposal)
+                    else:
+                        print(payload.emoji.name, emoji.REOPEN)
+                        print(payload.emoji.name == emoji.REOPEN)
                         await ctx.message.remove_reaction(payload.emoji, member)
 
     ########################################
@@ -379,25 +391,37 @@ class Proposals(commands.Cog):
     @proposals.command('pass')
     async def pass_proposal_1(self, ctx,
                               proposals: commands.Greedy[ProposalConverter]):
-        """Mark one or more proposals as passed, and lock voting on them."""
+        """Mark one or more proposals as passed, and lock voting on them.
+
+        Alternatively, you can react to the proposal with :white_check_mark:.
+        """
         await self._set_proposal_status(ctx, nomic.ProposalStatus.PASSED, proposals)
 
     @proposals.command('fail')
     async def fail_proposal_1(self, ctx,
                               proposals: commands.Greedy[ProposalConverter]):
-        """Mark one or more proposals as failed, and lock voting on them."""
+        """Mark one or more proposals as failed, and lock voting on them.
+
+        Alternatively, you can react to the proposal with :no_entry_sign:.
+        """
         await self._set_proposal_status(ctx, nomic.ProposalStatus.FAILED, proposals)
 
     @proposals.command('revote', aliases=['reopen'])
     async def revote_proposal_1(self, ctx,
                                 proposals: commands.Greedy[ProposalConverter]):
-        """Reopen one or more proposals for voting."""
+        """Reopen one or more proposals for voting.
+
+        Alternatively, you can react to the proposal with :ballot_box:.
+        """
         await self._set_proposal_status(ctx, nomic.ProposalStatus.VOTING, proposals)
 
     @proposals.command('remove', aliases=['del', 'delete', 'rm'])
     async def remove_proposal_1(self, ctx,
                                 proposals: commands.Greedy[ProposalConverter]):
-        """Mark one or more proposals as deleted."""
+        """Mark one or more proposals as deleted.
+
+        Alternatively, you can react to the proposal with :wastebasket:.
+        """
         await self._set_proposal_status(ctx, nomic.ProposalStatus.DELETED, proposals)
 
     @commands.command('pass')
