@@ -35,6 +35,7 @@ class Secrets(commands.Cog):
         if isinstance(ctx.channel, discord.DMChannel):
             if secret:
                 await self.record_secret(ctx, secret)
+                await ctx.message.add_reaction(emoji.SUCCESS)
             else:
                 raise commands.UserInputError("You must specify a secret")
         else:
@@ -54,7 +55,6 @@ class Secrets(commands.Cog):
             if self.secret_message:
                 self.secrets[ctx.author.id] = (secret)
                 await self.update_secret_message()
-                await self.secret_message.add_reaction(emoji.SUCCESS)
             else:
                 await ctx.send(embed=discord.Embed(
                     color=colors.ERROR,
