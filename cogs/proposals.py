@@ -369,19 +369,21 @@ class Proposals(commands.Cog):
                                 member, proposal, member,
                                 old_amount, new_amount,
                             )
-                    elif payload.emoji.name in (emoji.PASS, emoji.FAIL, emoji.DELETE, emoji.REOPEN):
+                    elif payload.emoji.name in (emoji.PASS, emoji.FAIL, emoji.DELETE, emoji.REOPEN, 'pass', 'fail', 'delete', 'reopen'):
                         new_status = {
                             emoji.PASS: nomic.ProposalStatus.PASSED,
                             emoji.FAIL: nomic.ProposalStatus.FAILED,
                             emoji.DELETE: nomic.ProposalStatus.DELETED,
                             emoji.REOPEN: nomic.ProposalStatus.VOTING,
+                            'pass': nomic.ProposalStatus.PASSED,
+                            'fail': nomic.ProposalStatus.FAILED,
+                            'delete': nomic.ProposalStatus.DELETED,
+                            'reopen': nomic.ProposalStatus.VOTING,
                         }[payload.emoji.name]
                         async with game:
                             await proposal.set_status(new_status)
                             await game.log_proposal_change_status(member, proposal)
                     else:
-                        print(payload.emoji.name, emoji.REOPEN)
-                        print(payload.emoji.name == emoji.REOPEN)
                         await ctx.message.remove_reaction(payload.emoji, member)
 
     ########################################
