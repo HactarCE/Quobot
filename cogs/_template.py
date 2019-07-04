@@ -8,7 +8,7 @@ from discord.ext import commands
 # import utils
 
 
-class CogName(commands.cog):
+class CogName(commands.Cog):
     """Brief cog description."""
 
     name = "Cog name"
