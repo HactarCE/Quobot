@@ -49,7 +49,7 @@ class GitHub(commands.Cog):
         self.upload_task.change_interval(seconds=(future - now).seconds)
 
     async def cog_check(self, ctx):
-        return await utils.discord.is_admin(ctx)
+        return ctx.guild and await utils.discord.is_admin(ctx)
 
     def cog_unload(self):
         self.upload_task.cancel()

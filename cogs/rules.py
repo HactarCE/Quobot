@@ -63,7 +63,7 @@ class Rules(commands.Cog):
         self.bot = bot
 
     async def cog_check(self, ctx):
-        return nomic.Game(ctx).ready
+        return await nomic.Game.is_ready(ctx)
 
     @commands.group('rules', aliases=['ru', 'rule'], invoke_without_command=True)
     async def rules(self, ctx):

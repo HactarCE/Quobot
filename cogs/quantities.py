@@ -24,7 +24,7 @@ class Quantities(commands.Cog):
         self.bot = bot
 
     async def cog_check(self, ctx):
-        return nomic.Game(ctx).ready
+        return await nomic.Game.is_ready(ctx)
 
     @commands.group('quantities', aliases=['$', 'c', 'currencies', 'currency', 'q', 'quan', 'quantity'], invoke_without_command=True)
     async def quantities(self, ctx):

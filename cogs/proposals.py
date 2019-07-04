@@ -32,7 +32,7 @@ class Proposals(commands.Cog):
         self.bot = bot
 
     async def cog_check(self, ctx):
-        return nomic.Game(ctx).ready
+        return await nomic.Game.is_ready(ctx)
 
     @commands.group('proposals', aliases=['p', 'pr', 'prop', 'proposal'], invoke_without_command=True)
     async def proposals(self, ctx):
@@ -142,7 +142,7 @@ class Proposals(commands.Cog):
             if message.author.bot:
                 return  # Ignore bots.
             ctx = await self.bot.get_context(message)
-            if not nomic.Game(ctx).ready:
+            if not (ctx.guild and nomic.Game(ctx).ready):
                 return
             if message.channel == nomic.Game(ctx).proposals_channel:
                 prefix = await self.bot.get_prefix(message)
@@ -351,6 +351,8 @@ class Proposals(commands.Cog):
         message = await channel.fetch_message(payload.message_id)
         ctx = await self.bot.get_context(message)
         member = ctx.guild.get_member(payload.user_id)
+        if not (ctx.guild and nomic.Game(ctx).ready):
+            return
         game = nomic.Game(ctx)
         if game.proposals_channel and payload.channel_id == game.proposals_channel.id:
             for proposal in game.proposals:

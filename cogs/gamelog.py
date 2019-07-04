@@ -14,6 +14,9 @@ class GameLog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    async def cog_check(self, ctx):
+        return ctx.guild and nomic.Game(ctx).ready
+
     @commands.group(aliases=['l', 'log', 'logging'], invoke_without_command=True, rest_is_raw=True)
     async def logs(self, ctx, *, comment):
         """Link to the game's log files or record a comment in the log.
@@ -66,7 +69,6 @@ class GameLog(commands.Cog):
 
     @logs.group('channel', aliases=['chan'], invoke_without_command=True)
     @commands.check(utils.discord.is_admin)
-    @commands.check(nomic.Game.is_ready)
     async def channel(self, ctx):
         """Manage the logs channel."""
         await utils.commands.desig_chan_show(

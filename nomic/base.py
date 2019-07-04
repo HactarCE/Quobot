@@ -23,10 +23,12 @@ class BaseGame(abc.ABC):
     def __init__(self, arg: Union[discord.Guild, commands.Context]):
         if isinstance(arg, commands.Context):
             self.guild = arg.guild
+            if not self.guild:
+                raise ValueError(f"Can only get game from guild or guild context, not {type(arg.channel).__name__} context")
         else:
             self.guild = arg
         if not isinstance(self.guild, discord.Guild):
-            raise TypeError(f"Can only get game from guild, not {arg!r}")
+            raise TypeError(f"Can only get game from guild or guild context, not {arg!r}")
         self.__dict__ = self._games[self.guild.id] = self._games.get(self.guild.id, self.__dict__)
         # self._needs_save = False
         if not hasattr(self, '_lock'):

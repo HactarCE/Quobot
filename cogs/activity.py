@@ -17,7 +17,7 @@ class PlayerActivity(commands.Cog):
         self.bot = bot
 
     async def cog_check(self, ctx):
-        return nomic.Game(ctx).ready
+        return await nomic.Game.is_ready(ctx)
 
     async def record_activity(self, ctx, user):
         game = nomic.Game(ctx)
@@ -33,12 +33,12 @@ class PlayerActivity(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
-        if not message.author.bot:
+        if not message.author.bot and message.guild:
             await self.record_activity(message.guild, message.author)
 
     @commands.Cog.listener()
     async def on_reaction_add(self, reaction, user):
-        if not user.bot:
+        if not user.bot and reaction.message.guild:
             await self.record_activity(reaction.message.guild, user)
 
     async def _list_players(self, ctx, users: Iterator[discord.abc.User]):

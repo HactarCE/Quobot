@@ -67,7 +67,7 @@ class GameRepoManager(BaseGame):
 
     @classmethod
     async def is_ready(cls, ctx):
-        return cls(ctx).ready
+        return ctx.guild and cls(ctx).ready
 
     @property
     def repo_name(self):
