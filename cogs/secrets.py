@@ -48,13 +48,13 @@ class Secrets(commands.Cog):
                 ))
             else:
                 await self.start_secret(ctx)
-                await ctx.message.add_reaction(emoji.SUCCESS)
 
     async def record_secret(self, ctx, secret: str):
         async with self.secret_submission_lock:
             if self.secret_message:
                 self.secrets[ctx.author.id] = (secret)
                 await self.update_secret_message()
+                await self.secret_message.add_reaction(emoji.SUCCESS)
             else:
                 await ctx.send(embed=discord.Embed(
                     color=colors.ERROR,
