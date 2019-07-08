@@ -18,7 +18,7 @@ class GameLog(commands.Cog):
         return ctx.guild and nomic.Game(ctx).ready
 
     @commands.group(aliases=['l', 'log', 'logging'], invoke_without_command=True, rest_is_raw=True)
-    async def logs(self, ctx, *, comment):
+    async def logs(self, ctx, *, comment: commands.clean_content(fix_channel_mentions=True)):
         """Link to the game's log files or record a comment in the log.
 
         When invoked with no argument (`!log`), link to the game's log files.
