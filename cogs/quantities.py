@@ -82,7 +82,6 @@ class Quantities(commands.Cog):
         await utils.discord.send_split_embed(ctx, embed)
 
     @quantities.command('new', aliases=['add', 'create'])
-    @commands.check(utils.discord.is_admin)
     async def add_quantity(self, ctx, quantity_name: str, *aliases: str):
         """Create a new quantity."""
         game = nomic.Game(ctx)
@@ -109,7 +108,6 @@ class Quantities(commands.Cog):
         ))
 
     @quantities.command('remove', aliases=['del', 'delete', 'rm'])
-    @commands.check(utils.discord.is_admin)
     async def remove_quantity(self, ctx, quantity: QuantityConverter()):
         """Delete a quantity."""
         game = nomic.Game(ctx)
@@ -128,7 +126,6 @@ class Quantities(commands.Cog):
         ))
 
     @quantities.command('rename', aliases=['setname'])
-    @commands.check(utils.discord.is_admin)
     async def rename_quantity(self, ctx, quantity: QuantityConverter(), new_name: str):
         """Rename a quantity."""
         game = nomic.Game(ctx)
@@ -149,7 +146,6 @@ class Quantities(commands.Cog):
         ))
 
     @quantities.command('setaliases', aliases=['setalias'])
-    @commands.check(utils.discord.is_admin)
     async def set_quantity_aliases(self, ctx, quantity: QuantityConverter(), *new_aliases: str):
         """Change a quantity's aliases."""
         game = nomic.Game(ctx)
