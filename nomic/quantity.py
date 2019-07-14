@@ -52,7 +52,8 @@ class Quantity(_Quantity):
         if int(value) == value:
             value = int(value)
         if value == 0:
-            del self.players[player]
+            if player in self.players:
+                del self.players[player]
         else:
             self.players[player] = value
 

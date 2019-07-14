@@ -219,14 +219,8 @@ class Quantities(commands.Cog):
                        quantity: QuantityConverter(),
                        user: utils.discord.MeOrMemberConverter(),
                        *, reason: str = ''):
-        if amount == 0:
-            ctx.send(embed=discord.Embed(
-                color=colors.ERROR,
-                title="Can you please just not?",
-            ))
-            return
         game = nomic.Game(ctx)
-        positive = amount > 0
+        positive = amount >= 0
         old_amount = quantity.get(user)
         new_amount = old_amount + amount
         description = f"**{'+' if positive else '-'}{abs(amount)} {quantity.name}**"
