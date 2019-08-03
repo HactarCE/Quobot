@@ -16,6 +16,7 @@ class _Quantity:
     name: str
     aliases: List[str] = field(default_factory=list)
     players: PlayerDict = None
+    default_value: Union[int, float] = 0
 
 
 @functools.total_ordering
@@ -29,6 +30,7 @@ class Quantity(_Quantity):
     Optional attributes:
     - aliases (default []) -- list of strings
     - players (default {}) -- PlayerDict
+    - default_value (default 0) -- int or float
     """
 
     def __init__(self, *args, **kwargs):
@@ -40,6 +42,7 @@ class Quantity(_Quantity):
             name=self.name,
             aliases=sorted(self.aliases),
             players=self.players.export(),
+            default_value=self.default_value,
         )
 
     def rename(self, new_name: str):
@@ -48,17 +51,20 @@ class Quantity(_Quantity):
     def set_aliases(self, new_aliases: List[str]):
         self.game.set_quantity_aliases(self, new_aliases)
 
+    def set_default(self, new_default: float):
+        self.game.set_quantity_default(self, new_default)
+
     def set(self, player: discord.Member, value: Union[int, float]):
         if int(value) == value:
             value = int(value)
-        if value == 0:
+        if value == self.default_value:
             if player in self.players:
                 del self.players[player]
         else:
             self.players[player] = value
 
     def get(self, player: discord.Member):
-        return self.players.get(player, 0)
+        return self.players.get(player, self.default_value)
 
     def __str__(self):
         return f"quantity **{self.name}**"
@@ -130,6 +136,13 @@ class QuantityManager(GameRepoManager):
         quantity.aliases = sorted(new_aliases)
         self.save()
 
+    def set_quantity_default(self, quantity: Quantity, new_default: float):
+        self.assert_locked()
+        quantity.default_value = new_default
+        for player, value in quantity.players.sorted_items():
+            quantity.set(player, value)
+        self.save()
+
     def get_quantity(self, name: str) -> Optional[Quantity]:
         name = name.lower()
         if name in self.quantities:
@@ -170,6 +183,14 @@ class QuantityManager(GameRepoManager):
                                           new_aliases: List[str]):
         agent = utils.discord.fake_mention(agent)
         await self.log(f"{agent} changed the aliases of {quantity} from {old_aliases!r} to {new_aliases!r}")
+
+    async def log_quantity_change_default_value(self,
+                                                agent: discord.Member,
+                                                quantity: Quantity,
+                                                old_default_value: float,
+                                                new_default_value: float):
+        agent = utils.discord.fake_mention(agent)
+        await self.log(f"{agent} change the default value of {quantity} from {old_default_value} to {new_default_value}")
 
     async def log_quantity_set_value(self,
                                      agent: discord.Member,

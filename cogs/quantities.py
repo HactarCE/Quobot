@@ -74,9 +74,13 @@ class Quantities(commands.Cog):
             value = ''
             for member, amount in quantity.players.sorted_items():
                 value += f"{member.mention} has **{amount}**\n"
+            if value:
+                value += f"(all other players have {quantity.default_value})"
+            else:
+                value = f"(all players have {quantity.default_value})"
             embed.add_field(
                 name=quantity.name.capitalize(),
-                value=value or "(all players have zero)",
+                value=value,
                 inline=False,
             )
         await utils.discord.send_split_embed(ctx, embed)
@@ -156,6 +160,31 @@ class Quantities(commands.Cog):
             quantity.set_aliases(new_aliases)
             await game.log_quantity_change_aliases(ctx.author, quantity, old_aliases, quantity.aliases)
         await ctx.message.add_reaction(emoji.SUCCESS)
+
+    @quantities.command('setdefault')
+    async def set_quantity_default(self, ctx, quantity: QuantityConverter(), new_default: float):
+        """Change the default value for a quantity."""
+        if int(new_default) == new_default:
+            new_default = int(new_default)
+        old_default = quantity.default_value
+        m, response = await utils.discord.get_confirm_embed(
+            ctx,
+            title=f"Change default value of {quantity} from {old_default} to {new_default}?",
+            description=f"Any players with {old_default} of {quantity} will now have {new_default}.",
+        )
+        if response == 'y':
+            async with nomic.Game(ctx) as game:
+                quantity.set_default(new_default)
+                await game.log_quantity_change_default_value(ctx.author, quantity, old_default, new_default)
+            await m.edit(embed=discord.Embed(
+                color=colors.CONFIRM,
+                title=f"Default value of {quantity} changed to {new_default}",
+            ))
+        else:
+            await m.edit(embed=discord.Embed(
+                color=colors.YESNO[response],
+                title=f"Default value change {strings.YESNO[response]}",
+            ))
 
     ########################################
     # TRANSACTION COMMANDS
