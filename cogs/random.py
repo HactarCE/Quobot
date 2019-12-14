@@ -119,6 +119,8 @@ class Random(commands.Cog):
                     rolls = int(dice_match['rolls'] or '1')
                     if rolls < 1:
                         raise commands.UserInputError(f"Invalid roll count: `{dice_match['rolls']}` at start of `{remaining}`")
+                    if rolls > 99;
+                        raise commands.UserInputError(f"Too many rolls: `{dice_match['rolls']}` at start of `{remaininag}`")
                     faces = int(dice_match['faces'] or '1')
                     if faces < 2:
                         raise commands.UserInputError(f"Invalid face count: `{dice_match['faces']}` at start of `{remaining}`")
