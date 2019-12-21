@@ -91,8 +91,8 @@ async def log_error(ctx, exc, *args, **kwargs):
             )
         tb = ''.join(traceback.format_tb(exc.__traceback__))
         tb = f"```\n{tb.replace('```', '` ` `')}"
-        if len(tb) > 1000:
-            tb = tb[:1000] + '\n```(truncated)'
+        if len(tb) > 1800:
+            tb = tb[:1800] + '\n```(truncated)'
         else:
             tb += '\n```'
         embed.add_field(

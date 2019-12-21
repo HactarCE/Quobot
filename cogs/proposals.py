@@ -266,8 +266,8 @@ class Proposals(commands.Cog):
             )
 
     def _check_proposal_content(self, content):
-        if len(content) > 1000:
-            raise commands.UserInputError(f"Proposal content must be 1000 characters or smaller; {len(content)} is too many.")
+        if len(content) > 1800:
+            raise commands.UserInputError(f"Proposal content must be 1800 characters or smaller; {len(content)} is too many.")
 
     ########################################
     # VOTING
