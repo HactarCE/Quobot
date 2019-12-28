@@ -80,7 +80,7 @@ class Proposal(_Proposal):
     def export(self) -> dict:
         return OrderedDict(
             n=self.n,
-            author=self.author.id,
+            author=self.author and self.author.id,
             content=self.content,
             status=self.status.value,
             message_id=self.message_id,

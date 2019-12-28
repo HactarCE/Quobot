@@ -25,10 +25,16 @@ def get_message_link(message: discord.Message):
 
 
 def embed_happened_footer(past_participle: str, user: discord.abc.User):
-    return {
-        'text': f"{past_participle} by {fake_mention(user)}",
-        'icon_url': user.avatar_url,
+    if user:
+        mention = fake_mention(user)
+    else:
+        mention = "an unknown user"
+    ret = {
+        'text': f"{past_participle} by {mention}",
     }
+    if user:
+        ret['icon_url'] = user.avatar_url
+    return ret
 
 
 def _split_text(p: str, max_len: int) -> Tuple[str, str]:
