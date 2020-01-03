@@ -155,8 +155,8 @@ class QuantityManager(GameRepoManager):
         # TODO: this is duplicated in cogs.quantities
         if len(name) > 32:
             raise ValueError(f"Quantity name {name!r} is too long")
-        if not re.match(r'[a-z][0-9a-z\-_]*', name):
-            raise ValueError(f"Quantity name {name!r} is invalid; quantity names and aliases may only contain lowercase letters, numbers, hyphens, or underscores, and must begin with a lowercase letter")
+        if not re.match(r'[0-9a-z][0-9a-z\-_]*', name):
+            raise ValueError(f"Quantity name {name!r} is invalid; quantity names and aliases may only contain lowercase letters, numbers, hyphens, or underscores, and must begin with a lowercase letter or number")
         if not (ignore and name in ignore.aliases):
             if self.get_quantity(name):
                 raise ValueError(f"Quantity name {name!r} is already in use")
