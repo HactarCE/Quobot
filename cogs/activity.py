@@ -29,7 +29,6 @@ class PlayerActivity(commands.Cog):
         if user not in diffs or diffs.get(user) > 60 * 10:
             async with game:
                 game.record_activity(user)
-                l.info(f"Recorded activity for {utils.discord.fake_mention(user)!r} on {game.guild.name!r}")
 
     @commands.Cog.listener()
     async def on_message(self, message):

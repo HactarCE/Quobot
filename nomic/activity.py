@@ -3,6 +3,7 @@ import discord
 
 from .playerdict import PlayerDict
 from .repoman import GameRepoManager
+from utils import l
 import utils
 
 
@@ -21,6 +22,7 @@ class ActivityTracker(GameRepoManager):
         """Mark a player as being active right now."""
         self.assert_locked()
         self.player_activity[user] = utils.now()
+        l.info(f"Recorded activity for {utils.discord.fake_mention(user)!r} on {self.guild.name!r}")
         self.save()
 
     def get_activity_diff(self, user: discord.Member) -> Optional[int]:
