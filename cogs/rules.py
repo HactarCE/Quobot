@@ -214,7 +214,6 @@ class Rules(commands.Cog):
                     ))
                 else:
                     await utils.discord.invoke_comamnd(ctx, 'rule', 'download', rule)
-                await ctx.send_message(rule.content)
             response, new_content = await self._rule_edit_wizard(ctx, rule, edit=True)
             if response != 'y':
                 return
