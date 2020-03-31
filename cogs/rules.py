@@ -206,7 +206,7 @@ class Rules(commands.Cog):
         else:
             if rule.tag != 'root':
                 s = f"```\n{rule.content}\n```"
-                if len(s) < utils.discord.MAX_EMBED_FIELD_VALUE:
+                if len(s) < utils.discord.MAX_EMBED_VALUE:
                     await ctx.send(embed=discord.Embed(
                         color=colors.INFO,
                         title="Existing rule content",
