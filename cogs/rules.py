@@ -204,6 +204,17 @@ class Rules(commands.Cog):
             new_content = (await ctx.message.attachments[0].read()).decode().strip()
             await ctx.message.add_reaction(emoji.SUCCESS)
         else:
+            if rule.tag != 'root':
+                s = f"```\nrule.content\n```"
+                if len(s) < utils.discord.MAX_EMBED_FIELD_VALUE:
+                    await ctx.send(embed=discord.Embed(
+                        color=colors.INFO,
+                        title="Existing rule content",
+                        description=s,
+                    ))
+                else:
+                    await utils.discord.invoke_comamnd(ctx, 'rule', 'download', rule)
+                await ctx.send_message(rule.content)
             response, new_content = await self._rule_edit_wizard(ctx, rule, edit=True)
             if response != 'y':
                 return
