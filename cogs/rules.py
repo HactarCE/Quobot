@@ -205,7 +205,7 @@ class Rules(commands.Cog):
             await ctx.message.add_reaction(emoji.SUCCESS)
         else:
             if rule.tag != 'root':
-                s = f"```\nrule.content\n```"
+                s = f"```\n{rule.content}\n```"
                 if len(s) < utils.discord.MAX_EMBED_FIELD_VALUE:
                     await ctx.send(embed=discord.Embed(
                         color=colors.INFO,
