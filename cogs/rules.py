@@ -213,7 +213,7 @@ class Rules(commands.Cog):
                         description=s,
                     ))
                 else:
-                    await utils.discord.invoke_command(ctx, 'rule', 'download', rule)
+                    await utils.discord.invoke_command(ctx, 'rule download', rule)
             response, new_content = await self._rule_edit_wizard(ctx, rule, edit=True)
             if response != 'y':
                 return

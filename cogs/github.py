@@ -36,6 +36,7 @@ class GitHub(commands.Cog):
         if self.upload_task_ready:
             l.info(f"Performing periodic upload")
             for game in self.games:
+                log.error(dir(game))
                 if game.flags.auto_upload:
                     async with game:
                         await asyncio.shield(game.upload_all())
