@@ -31,12 +31,11 @@ class GitHub(commands.Cog):
             if game.repo.exists:
                 yield game
 
-    @tasks.loop(seconds=0)
+    @tasks.loop(seconds=60)
     async def upload_task(self):
         if self.upload_task_ready:
             l.info(f"Performing periodic upload")
             for game in self.games:
-                log.error(dir(game))
                 if game.flags.auto_upload:
                     async with game:
                         await asyncio.shield(game.upload_all())
