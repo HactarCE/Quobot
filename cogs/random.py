@@ -100,7 +100,7 @@ class Random(commands.Cog):
             await invoke_command_help(ctx)
             return
         message = ''
-        for dice_expression in dice_expressions.split():
+        for dice_expression in dice_expressions.replace('`', '').split():
             remaining = dice_expression
             first = True
             total = 0
