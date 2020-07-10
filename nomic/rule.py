@@ -479,7 +479,7 @@ class RuleManager(GameRepoManager):
         if rule == self.root_rule:
             raise ValueError("Cannot delete root rule")
         for child in rule.children:
-            child.remove()
+            self.remove_rule(child)
         rule.parent.child_tags.remove(rule.tag)
         del self.rules[rule.tag]
         self.assert_rules_validity()
