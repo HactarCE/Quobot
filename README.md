@@ -5,17 +5,9 @@ A bot for the Nomic game on the Quonauts Discord server
 ## Setup
 
 1. Install Python 3.6 or higher.
-2. Install Discord.py (rewrite):
-
-```sh
-git clone https://github.com/Rapptz/discord.py
-cd discord.py
-git fetch
-git checkout rewrite
-pip install --user .
-```
-
-3. Create a file `data/config.json` with the following contents:
+2. Install Discord.py 1.5 or higher.
+3. Create a [Discord bot account](https://discord.com/developers/applications) and enable the server members intent under "Privileged Gateway Events".
+4. Create a file `data/config.json` with the following contents:
 
 ```json
 {
@@ -30,7 +22,7 @@ pip install --user .
 
 (Obviously adjust parameters as appropriate; these are just some defaults.)
 
-4. Run `python3 main.py` to start the bot.
+5. Run `python3 main.py` to start the bot.
 
 ## GitHub repo
 
