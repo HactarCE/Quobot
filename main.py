@@ -34,7 +34,8 @@ class Bot(commands.Bot):
             command_prefix=info.COMMAND_PREFIX,
             case_insensitive=True,
             description=kwargs.pop('description'),
-            status=discord.Status.dnd
+            status=discord.Status.dnd,
+            intents=discord.Intents(guilds=True, members=True, messages=True, reactions=True),
         )
         self.app_info = None
         self.cogs_loaded = set()
